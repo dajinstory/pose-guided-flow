@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=0 python src/train.py --config config/pgflow_v0.yml
+python src/train.py --config config/pgflow_v0.yml

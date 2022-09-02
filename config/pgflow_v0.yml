@@ -1,6 +1,6 @@
 name: pgflow_v0
 
-gpus: [0] #,1,2,3] #[4,5,6,7]
+gpus: [3] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 10
@@ -20,8 +20,8 @@ DATA:
     use_rot: false
     use_shuffle: true
     
-    batch_size_per_gpu: 4
-    num_workers: 8
+    batch_size_per_gpu: 16
+    num_workers: 16
     pin_memory: true
   
   valid:
@@ -79,7 +79,12 @@ MODEL:
       args:
         weight: 5.0
         margin_pos: 0.0
-        margin_neg: 0.01 #0.1  
+        margin_neg: 0.1
+    recon_self:
+      type: MSELoss
+      args:
+        weight: 1.0
+        
   optim:
     type: Adam
     lr: !!float 1e-4

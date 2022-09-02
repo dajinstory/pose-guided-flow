@@ -76,10 +76,11 @@ class PGFlowV0(nn.Module):
             print("Load flownet - Checkpoint : ", ckpt_path, flush=True)
             self.init_weights(ckpt_path)
         else:
-            print("Load flownet -  Initial Random N(0,0.01)", flush=True)
-            for p in self.parameters():
-                p.data = 0.01 * torch.randn_like(p)
-    
+            # print("Load flownet -  Initial Random N(0,0.01)", flush=True)
+            # for p in self.parameters():
+            #     p.data = 0.01 * torch.randn_like(p)
+            print("Load flownet -  No Initialize", flush=True)
+ 
     def init_weights(self, ckpt_path):
         self.load_state_dict(torch.load(ckpt_path), strict=True)
         for block in [*self.blocks, *self.headers]:

@@ -82,23 +82,28 @@ class LitPGFlowV0(LitBaseModel):
         w, log_p, log_det = self.flow_net.forward(im, conditions)
         
         # Reverse - Latent to Image
-        # w_cross, conditions_cross, im_cross = self._prepare_cross(w, conditions, im)
-        # w_random, conditions_random, im_random = self._prepare_random(w, conditions, im)
-        # im_recc = self.flow_net.reverse(w_cross, conditions_cross)
-        # im_recr = self.flow_net.reverse(w_random, conditions_random)
+        w_s, conditions_s, im_s = self._prepare_self(w, conditions, im)
+        # w_c, conditions_c, im_c = self._prepare_cross(w, conditions, im)
+        # w_r, conditions_r, im_r = self._prepare_random(w, conditions, im)
+        im_recs = self.flow_net.reverse(w_s, conditions_s)
+        # im_recc = self.flow_net.reverse(w_c, conditions_c)
+        # im_recr = self.flow_net.reverse(w_r, conditions_r)
         
         # Clamp outputs
-        # im_cross = torch.clamp(self.reverse_preprocess(im_cross), 0, 1)
-        # im_random = torch.clamp(self.reverse_preprocess(im_random), 0, 1)
+        im_recs = torch.clamp(self.reverse_preprocess(im_recs), 0, 1)
         # im_recc = torch.clamp(self.reverse_preprocess(im_recc), 0, 1)
         # im_recr = torch.clamp(self.reverse_preprocess(im_recr), 0, 1)
+        im_s = torch.clamp(self.reverse_preprocess(im_s), 0, 1)
+        # im_c = torch.clamp(self.reverse_preprocess(im_c), 0, 1)
+        # im_r = torch.clamp(self.reverse_preprocess(im_r), 0, 1)
         
         # Loss
         losses = dict()
         losses['loss_nll'], log_nll = self.loss_nll(log_p, log_det, n_pixel=3*64*64)
         losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
-        # losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_cross)
-        # losses['loss_recr'], log_recr = self.loss_recr(im_recr, im_random)
+        losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s)
+        # losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c)
+        # losses['loss_recr'], log_recr = self.loss_recr(im_recr, im_r)
         loss_total_common = sum(losses.values())
         
         log_train = {
@@ -106,6 +111,7 @@ class LitPGFlowV0(LitBaseModel):
             'train/loss_cvg': log_cvg[0],
             'train/d_pos': log_cvg[1],
             'train/d_neg': log_cvg[2],
+            'train/loss_recs': log_recs,
             # 'train/loss_recc': log_recc,
             # 'train/loss_recr': log_recr,
             'train/loss_total_common': loss_total_common,
@@ -125,16 +131,16 @@ class LitPGFlowV0(LitBaseModel):
         w, log_p, log_det = self.flow_net.forward(im, conditions)
         
         # Reverse - Latent to Image
-        w_self, conditions_self, im_self = self._prepare_self(w, conditions, im, stage='valid')
-        w_cross, conditions_cross, im_cross = self._prepare_cross(w, conditions, im)
-        im_recs = self.flow_net.reverse(w_self, conditions_self)
-        im_recc = self.flow_net.reverse(w_cross, conditions_cross)
+        w_s, conditions_s, im_s = self._prepare_self(w, conditions, im, stage='valid')
+        w_c, conditions_c, im_c = self._prepare_cross(w, conditions, im)
+        im_recs = self.flow_net.reverse(w_s, conditions_s)
+        im_recc = self.flow_net.reverse(w_c, conditions_c)
         
         # Format - range (0~1)
-        input = torch.clamp(self.reverse_preprocess(im_self), 0, 1)
+        input = torch.clamp(self.reverse_preprocess(im_s), 0, 1)
         recon = torch.clamp(self.reverse_preprocess(im_recs), 0, 1)
         output = torch.clamp(self.reverse_preprocess(im_recc), 0, 1)
-        gt = torch.clamp(self.reverse_preprocess(im_cross), 0, 1)
+        gt = torch.clamp(self.reverse_preprocess(im_c), 0, 1)
         
         # Metric - Image, CHW
         if batch_idx < 10:
@@ -204,6 +210,7 @@ class LitPGFlowV0(LitBaseModel):
         
         self.loss_nll = losses[opt['nll']['type']](**opt['nll']['args'])
         self.loss_cvg = losses[opt['cvg']['type']](**opt['cvg']['args'])
+        self.loss_recs = losses[opt['recon_self']['type']](**opt['recon_self']['args'])
         # self.loss_recc = losses[opt['recon_cross']['type']](**opt['recon_cross']['args'])
         # self.loss_recr = losses[opt['recon_random']['type']](**opt['recon_random']['args'])
 
@@ -212,18 +219,11 @@ class LitPGFlowV0(LitBaseModel):
         w_ = w.clone().detach()[:2*n_batch]
         if stage=='valid':
             w_ = w_
-        elif False:
-            w_ = w_ + torch.randn_like(w_)*0.1
-        elif True:
+        else:
             w_ = (w_[:n_batch] + w_[n_batch:2*n_batch]) / 2
             w_ = torch.cat([w_, w_], dim=0)   
-        else:
-            z_abs = torch.abs(w_)
-            z_sign = torch.sign(w_)          
-            eps = torch.abs(torch.randn_like(w_))* 0.1
-            w_ = z_sign * torch.min(z_abs, torch.abs(z_abs-eps))
         conditions_ = []
-        for idx, condition in enumerate(conditions):                    
+        for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
         im_ = im[:2*n_batch]
         return w_, conditions_, im_
@@ -232,21 +232,16 @@ class LitPGFlowV0(LitBaseModel):
         n_batch = w.shape[0]//3
         w_ = w.clone().detach()[:2*n_batch]
         conditions_ = []
-        for idx, condition in enumerate(conditions):
-            if idx==0: # if mixed
-                conditions_.append(condition[:2*n_batch])
-            else:
-                conditions_.append(torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0))
+        for condition in conditions:
+            conditions_.append(torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0))
         im_ = torch.cat([im[n_batch:2*n_batch], im[:n_batch]], dim=0)
         return w_, conditions_, im_
 
     def _prepare_random(self, w, conditions, im):
         n_batch = w.shape[0]//3
         w_ = torch.randn_like(w)[:n_batch] * 1.0
-        for header in self.flow_net.headers[::-1]:
-            w_ = header.reverse(w_)
         conditions_ = []
-        for idx, condition in enumerate(conditions):
+        for condition in conditions:
             conditions_.append(condition[:n_batch])
         im_ = im[:n_batch]
         return w_, conditions_, im_
