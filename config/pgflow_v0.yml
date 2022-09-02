@@ -1,0 +1,93 @@
+name: pgflow_v0
+
+gpus: [0] #,1,2,3] #[4,5,6,7]
+seed: 310
+
+n_epochs: 10
+val_check_interval: 1000 #0.5
+log_every_n_steps: 100
+
+DATA:
+  train:
+    type: TripletLandmarkDataset
+    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
+    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/train_meta_norm.csv
+    abbreviation: false
+    in_size: 64
+    gt_size: 64
+
+    use_hflip: true
+    use_rot: false
+    use_shuffle: true
+    
+    batch_size_per_gpu: 4
+    num_workers: 8
+    pin_memory: true
+  
+  valid:
+    type: TripletLandmarkDataset
+    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
+    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
+    abbreviation: false #True
+    in_size: 64
+    gt_size: 64
+
+    use_hflip: false
+    use_rot: false
+    use_shuffle: false
+    
+    batch_size_per_gpu: 4
+    num_workers: 4
+    pin_memory: true
+  
+  test:
+    type: TripletLandmarkDataset
+    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
+    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
+    abbreviation: false #true
+    in_size: 64
+    gt_size: 64
+
+    use_hflip: false
+    use_rot: false
+    use_shuffle: false
+    
+    batch_size_per_gpu: 4
+    num_workers: 4
+    pin_memory: true
+    
+    
+MODEL:
+  type: "LitPGFlowV0"
+  in_size: 64
+  gt_size: 64
+  pretrained: #/home/dajinhan/nas_dajinhan/models/
+  
+  flow_net:
+    type: PGFlowV0
+    args:
+      pretrained:
+  
+  loss:
+    nll:
+      type: NLLLoss
+      args:
+        weight: 1.0
+        n_bits: 8
+    cvg:
+      type: TripletLoss
+      args:
+        weight: 5.0
+        margin_pos: 0.0
+        margin_neg: 0.01 #0.1  
+  optim:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingLR
+    T_max: 30
+    eta_min: !!float 1e-7
+  
