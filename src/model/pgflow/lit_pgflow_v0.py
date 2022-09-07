@@ -79,7 +79,8 @@ class LitPGFlowV0(LitBaseModel):
         im, conditions = self.preprocess_batch(batch)
 
         # Forward
-        w, log_p, log_det = self.flow_net.forward(im, conditions)
+        quant_randomness = self.preprocess(torch.rand_like(im)/self.n_bins) - self.preprocess(torch.zeros_like(im)) # x = (0~1)/n_bins, \ (im-m)/s + (x-m)/s - (0-m)/s = (im+x-m)/s
+        w, log_p, log_det = self.flow_net.forward(im + quant_randomness, conditions)
         
         # Reverse - Latent to Image
         w_s, conditions_s, im_s = self._prepare_self(w, conditions, im)

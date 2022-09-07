@@ -1,6 +1,6 @@
 name: pgflow_v0
 
-gpus: [3] #,1,2,3] #[4,5,6,7]
+gpus: [2,3] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 10
@@ -10,8 +10,8 @@ log_every_n_steps: 100
 DATA:
   train:
     type: TripletLandmarkDataset
-    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
-    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/train_meta_norm.csv
+    root_path: /data/dajinhan/VoxCeleb/unzippedFaces
+    meta_path: /data/dajinhan/VoxCeleb/meta/train_meta_norm.csv
     abbreviation: false
     in_size: 64
     gt_size: 64
@@ -26,8 +26,8 @@ DATA:
   
   valid:
     type: TripletLandmarkDataset
-    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
-    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
+    root_path: /data/dajinhan/VoxCeleb/unzippedFaces
+    meta_path: /data/dajinhan/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
     abbreviation: false #True
     in_size: 64
     gt_size: 64
@@ -42,8 +42,8 @@ DATA:
   
   test:
     type: TripletLandmarkDataset
-    root_path: /home/dajinhan/nas_dataset/VoxCeleb/unzippedFaces
-    meta_path: /home/dajinhan/nas_dataset/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
+    root_path: /data/dajinhan/VoxCeleb/unzippedFaces
+    meta_path: /data/dajinhan/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
     abbreviation: false #true
     in_size: 64
     gt_size: 64
@@ -83,7 +83,7 @@ MODEL:
     recon_self:
       type: MSELoss
       args:
-        weight: 1.0
+        weight: 0.01
         
   optim:
     type: Adam

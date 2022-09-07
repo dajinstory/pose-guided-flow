@@ -32,7 +32,7 @@ class TripletLandmarkDataset(LandmarkDataset):
         n_idx = random.choice([*range(0,l), *range(r, len(self.frames))])
         n_idx = self._verify_data(n_idx, [*range(0,l), *range(r, len(self.frames))])
         
-        # Prepare Datset
+        # Prepare Dataset
         im0 = self.load_image(idx)
         im1 = self.load_image(p_idx)
         im2 = self.load_image(n_idx)
