@@ -6,14 +6,27 @@ from math import log, sqrt, pi, exp, cos, sin
 from ..common.flow_module import gaussian_log_p
 from ..common.flow_module import Block, FakeBlock, ZeroConv2d
 
+# def sub_conv(ch_hidden, kernel):
+#     pad = kernel // 2
+#     kernel_center = 1
+#     pad_center = kernel_center // 2 
+#     return lambda ch_in, ch_out: nn.Sequential(
+#                                     nn.Conv2d(ch_in, ch_hidden, kernel, padding=pad),
+#                                     nn.ReLU(),
+#                                     nn.Conv2d(ch_hidden, ch_hidden, kernel_center, padding=pad_center),
+#                                     nn.ReLU(),
+#                                     ZeroConv2d(ch_hidden, ch_out),)
+
 def sub_conv(ch_hidden, kernel):
     pad = kernel // 2
+    kernel_center = 1
+    pad_center = kernel_center // 2
     return lambda ch_in, ch_out: nn.Sequential(
                                     nn.Conv2d(ch_in, ch_hidden, kernel, padding=pad),
                                     nn.ReLU(),
-                                    nn.Conv2d(ch_hidden, ch_hidden, kernel, padding=pad),
+                                    nn.Conv2d(ch_hidden, ch_hidden, kernel_center, padding=pad_center),
                                     nn.ReLU(),
-                                    ZeroConv2d(ch_hidden, ch_out),)
+                                    nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
 
 class PGFlowV0(nn.Module):
     def __init__(self, pretrained=None):
@@ -31,16 +44,16 @@ class PGFlowV0(nn.Module):
         # Blocks (3,64,64) -> (768,4,4)
         self.blocks = nn.Sequential(
             Block(squeeze=True, # (12,32,32)
-                  flow_type='InvConvFlow', n_flows=8, ch_in=12, ch_c=68, n_chunk=2, subnet=sub_conv(64,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=12, ch_c=68, n_chunk=2, subnet=sub_conv(64,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (48,16,16)
-                  flow_type='InvConvFlow', n_flows=8, ch_in=48, ch_c=68, n_chunk=2, subnet=sub_conv(128,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=48, ch_c=68, n_chunk=2, subnet=sub_conv(128,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (192,8,8)
-                  flow_type='InvConvFlow', n_flows=8, ch_in=192, ch_c=68, n_chunk=2, subnet=sub_conv(256,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=192, ch_c=68, n_chunk=2, subnet=sub_conv(256,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (768,4,4)
-                  flow_type='InvConvFlow', n_flows=8, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
         )
 
@@ -50,22 +63,22 @@ class PGFlowV0(nn.Module):
             self.headers.append(nn.Sequential())
             self.headers[feature_level].append(
                 Block(squeeze=True, # (b,768,2,2)
-                      flow_type='InvConvFlow', n_flows=4, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                      flow_type='InvConvFlow', n_flows=4, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                       split=False)
             )
             self.headers[feature_level].append(
                 nn.Sequential(
                     Block(squeeze=True, # 1st (b,768,1,1) 
-                          flow_type='InvConvFlow', n_flows=4, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                          flow_type='InvConvFlow', n_flows=4, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                           split=False),
                     Block(squeeze=True, # 2nd (b,768,1,1) 
-                          flow_type='InvConvFlow', n_flows=4, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                          flow_type='InvConvFlow', n_flows=4, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                           split=False),
                     Block(squeeze=True, # 3rd (b,768,1,1) 
-                          flow_type='InvConvFlow', n_flows=4, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                          flow_type='InvConvFlow', n_flows=4, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                           split=False),
                     Block(squeeze=True, # 4th (b,768,1,1) 
-                          flow_type='InvConvFlow', n_flows=4, ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                          flow_type='InvConvFlow', n_flows=4, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                           split=False),
                 )
             )
@@ -91,11 +104,15 @@ class PGFlowV0(nn.Module):
         output = x        
         log_p = 0
         log_det = 0  
+        splits = []
+        inter_features = []
 
         # Blocks (3,64,64) -> (768,4,4)
         for block, condition in zip(self.blocks, conditions[:len(self.blocks)]):
             output, _log_det, _split = block(output, condition)
             log_det = log_det + _log_det
+            splits.append(_split)
+            inter_features.append(output)
 
             if _split is not None:
                 split = _split
@@ -148,9 +165,9 @@ class PGFlowV0(nn.Module):
         _log_p = gaussian_log_p(z, _m, _log_sd)
         log_p = log_p + _log_p.sum(1)
           
-        return w, log_p, log_det
+        return w, log_p, log_det, splits, inter_features
 
-    def reverse(self, w, conditions):
+    def reverse(self, w, conditions, splits):
         output = w.view(-1,16,768)
     
         # Headers
@@ -178,8 +195,8 @@ class PGFlowV0(nn.Module):
         
         # Blocks
         input = input_by_levels
-        for block, condition in zip(self.blocks[::-1], conditions[len(self.blocks)-1::-1]):
-            input = block.reverse(input, condition, split=None)
+        for block, condition, split in zip(self.blocks[::-1], conditions[len(self.blocks)-1::-1], splits[::-1]):
+            input = block.reverse(input, condition, split)
             
         return input
 

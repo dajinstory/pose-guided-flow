@@ -64,12 +64,12 @@ class L1Loss(nn.Module):
         """
         loss = l1_loss(pred,
                        target,
-                       weight,
+                       weight=None,
                        reduction=self.reduction,
                        sample_wise=self.sample_wise)
         
-        return self.weight * loss, loss
-    
+        weight = weight if weight is not None else self.weight
+        return weight * loss, loss    
     
 class MSELoss(nn.Module):
     """MSE (L2) loss.
@@ -104,8 +104,9 @@ class MSELoss(nn.Module):
         """
         loss = mse_loss(pred,
                        target,
-                       weight,
+                       weight=None,
                        reduction=self.reduction,
                        sample_wise=self.sample_wise)
         
-        return self.weight * loss, loss
+        weight = weight if weight is not None else self.weight
+        return weight * loss, loss
