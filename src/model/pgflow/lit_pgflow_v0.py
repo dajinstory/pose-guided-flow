@@ -49,6 +49,10 @@ class LitPGFlowV0(LitBaseModel):
             mean=[-m/s for m,s in zip(self.norm_mean, self.norm_std)],
             std=[1/s for s in self.norm_std])
         
+        self.in_size = self.opt['in_size']
+        self.n_bits = self.opt['n_bits']
+        self.n_bins = 2.0**self.n_bits
+
         # loss
         self._create_loss(opt['loss'])
         
@@ -100,7 +104,7 @@ class LitPGFlowV0(LitBaseModel):
         
         # Loss
         losses = dict()
-        losses['loss_nll'], log_nll = self.loss_nll(log_p, log_det, n_pixel=3*64*64)
+        losses['loss_nll'], log_nll = self.loss_nll(log_p, log_det, n_pixel=3*self.in_size*self.in_size)
         losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
         losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s)
         # losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c)
