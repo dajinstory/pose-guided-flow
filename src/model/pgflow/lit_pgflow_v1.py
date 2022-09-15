@@ -13,7 +13,7 @@ from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 from ..common.lit_basemodel import LitBaseModel
-from .pgflow_v0 import PGFlowV0
+from .pgflow_v1 import PGFlowV1
 from .vgg_header import get_vgg_header
 from loss import NLLLoss, TripletLoss, MSELoss, L1Loss, PerceptualLoss, IDLoss, GANLoss
 from metric import L1, PSNR, SSIM
@@ -26,8 +26,8 @@ from collections import OrderedDict
 
 import cv2
 
-# NLL, NO SPLIT
-class LitPGFlowV0(LitBaseModel):
+# NLL, SPLIT, temp=0
+class LitPGFlowV1(LitBaseModel):
     def __init__(self,
                  opt: dict,
                  pretrained=None,
@@ -37,7 +37,7 @@ class LitPGFlowV0(LitBaseModel):
 
         # network
         flow_nets = {
-            'PGFlowV0': PGFlowV0,
+            'PGFlowV1': PGFlowV1,
         }
 
         self.opt = opt
@@ -52,10 +52,10 @@ class LitPGFlowV0(LitBaseModel):
             torchvision.models.vgg16(pretrained=True).features[9:16].eval(),    # 256,16,16
             torchvision.models.vgg16(pretrained=True).features[16:23].eval())   # 512,8,8
         self.vgg_headers = nn.Sequential(
-            get_vgg_header(12,32,64,3),
-            get_vgg_header(48,64,128,3),
-            get_vgg_header(192,256,256,3),
-            get_vgg_header(768,512,512,3),            
+            get_vgg_header(6,32,64,3),
+            get_vgg_header(12,64,128,3),
+            get_vgg_header(24,128,256,3),
+            get_vgg_header(48,256,512,3),            
         )
 
         self.norm_mean = [0.5, 0.5, 0.5]
@@ -127,11 +127,11 @@ class LitPGFlowV0(LitBaseModel):
         inter_features = [ vgg_header(inter_feature) for vgg_header, inter_feature in zip(self.vgg_headers, inter_features[:4]) ]
         
         # Reverse - Latent to Image
-        splits_none = [None] * len(splits)
+        splits_zeros = [torch.zeros_like(split) if split is not None else None for split in splits]  
         w_s, conditions_s, im_s = self._prepare_self(w, conditions, im)
         w_c, conditions_c, im_c = self._prepare_cross(w, conditions, im)
-        im_recs = self.flow_net.reverse(w_s, conditions_s, splits_none)
-        im_recc = self.flow_net.reverse(w_c, conditions_c, splits_none)
+        im_recs = self.flow_net.reverse(w_s, conditions_s, splits_zeros)
+        im_recc = self.flow_net.reverse(w_c, conditions_c, splits_zeros)
         
         # Clamp outputs
         im_recs = torch.clamp(self.reverse_preprocess(im_recs), 0, 1)
@@ -166,9 +166,8 @@ class LitPGFlowV0(LitBaseModel):
         }
         
         # Log
-        self.epoch = 1
         self.log_dict(log_train, logger=True, prog_bar=True)
-
+        
         # Total Loss
         return loss_total_common
 
@@ -181,12 +180,11 @@ class LitPGFlowV0(LitBaseModel):
         inter_features = [ vgg_header(inter_feature) for vgg_header, inter_feature in zip(self.vgg_headers, inter_features[:4]) ]
         
         # Reverse - Latent to Image
-        splits_none = [None] * len(splits)
+        splits_zeros = [torch.zeros_like(split) if split is not None else None for split in splits]  
         w_s, conditions_s, im_s = self._prepare_self(w, conditions, im)
         w_c, conditions_c, im_c = self._prepare_cross(w, conditions, im)
-        
-        im_recs = self.flow_net.reverse(w_s, conditions_s, splits_none)
-        im_recc = self.flow_net.reverse(w_c, conditions_c, splits_none)
+        im_recs = self.flow_net.reverse(w_s, conditions_s, splits_zeros)
+        im_recc = self.flow_net.reverse(w_c, conditions_c, splits_zeros)
         
         # Format - range (0~1)
         input = torch.clamp(self.reverse_preprocess(im_s), 0, 1)

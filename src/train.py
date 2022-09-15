@@ -31,8 +31,9 @@ args = parser.parse_args(remaining)
 
 
 # Log, Checkpoint
-args.save_path = os.path.join('./experiment', args.name, 'checkpoint')
-args.log_path = os.path.join('./experiment', args.name, 'log')
+experiment_path = '/data/dajinhan/experiment' # './experiment'
+args.save_path = os.path.join(experiment_path, args.name, 'checkpoint')
+args.log_path = os.path.join(experiment_path, args.name, 'log')
 os.makedirs(args.save_path, exist_ok=True)
 os.makedirs(args.log_path, exist_ok=True)
 logger = TensorBoardLogger(args.log_path, name='flow')
@@ -55,10 +56,10 @@ ckpt_path = args.ckpt_path if args.resume else None
 ## Callback - Checkpoint
 checkpoint_callback_train_nll = ModelCheckpoint(
     dirpath=args.save_path,
-    filename='best-epoch{epoch:02d}-nll{train/loss_nll:.4f}',
-    monitor='train/loss_nll',
+    filename='best-epoch{epoch:02d}-nll{val/metric/l1:.4f}',
+    monitor='val/metric/l1',
     save_last=True,
-    save_top_k=1,
+    save_top_k=3,
     mode='min',
     auto_insert_metric_name=False)
 

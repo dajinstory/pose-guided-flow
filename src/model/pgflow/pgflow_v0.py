@@ -28,6 +28,7 @@ def sub_conv(ch_hidden, kernel):
                                     nn.ReLU(),
                                     nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
 
+# No SPLIT
 class PGFlowV0(nn.Module):
     def __init__(self, pretrained=None):
         super().__init__()
@@ -44,16 +45,16 @@ class PGFlowV0(nn.Module):
         # Blocks (3,64,64) -> (768,4,4)
         self.blocks = nn.Sequential(
             Block(squeeze=True, # (12,32,32)
-                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=12, ch_c=68, n_chunk=2, subnet=sub_conv(64,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=12, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (48,16,16)
-                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=48, ch_c=68, n_chunk=2, subnet=sub_conv(128,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=48, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (192,8,8)
-                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=192, ch_c=68, n_chunk=2, subnet=sub_conv(256,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=192, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (768,4,4)
-                  flow_type='InvConvFlow', n_flows=8, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=768, ch_c=68, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
         )
 
@@ -89,10 +90,10 @@ class PGFlowV0(nn.Module):
             print("Load flownet - Checkpoint : ", ckpt_path, flush=True)
             self.init_weights(ckpt_path)
         else:
-            # print("Load flownet -  Initial Random N(0,0.01)", flush=True)
-            # for p in self.parameters():
-            #     p.data = 0.01 * torch.randn_like(p)
-            print("Load flownet -  No Initialize", flush=True)
+            print("Load flownet -  Initial Random N(0,0.01)", flush=True)
+            for p in self.parameters():
+                p.data = 0.01 * torch.randn_like(p)
+            # print("Load flownet -  No Initialize", flush=True)
  
     def init_weights(self, ckpt_path):
         self.load_state_dict(torch.load(ckpt_path), strict=True)

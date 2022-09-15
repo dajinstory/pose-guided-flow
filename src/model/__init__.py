@@ -1,13 +1,14 @@
 import torch
 from importlib import import_module
 
-from .pgflow import LitPGFlowV0
+from .pgflow import LitPGFlowV0, LitPGFlowV1
 
 
 def build_model(opt, is_train=True):
 
     models={
         'LitPGFlowV0': LitPGFlowV0,
+        'LitPGFlowV1': LitPGFlowV1,
     }
 
     try: 

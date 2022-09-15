@@ -1,4 +1,4 @@
-name: pgflow_v0
+name: pgflow_v1
 
 gpus: [2] #,1,2,3] #[4,5,6,7]
 seed: 310
@@ -58,14 +58,14 @@ DATA:
     
     
 MODEL:
-  type: "LitPGFlowV0"
+  type: "LitPGFlowV1"
   in_size: 64
   gt_size: 64
-  n_bits: 8 # 5
+  n_bits: 8
   pretrained: #/home/dajinhan/nas_dajinhan/models/
   
   flow_net:
-    type: PGFlowV0
+    type: PGFlowV1
     args:
       pretrained:
   
@@ -74,7 +74,7 @@ MODEL:
       type: NLLLoss
       args:
         weight: 1.0
-        n_bits: 8 # 5
+        n_bits: 8
     feature_guide:
       type: MSELoss
       args:
