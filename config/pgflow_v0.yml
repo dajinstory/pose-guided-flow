@@ -84,15 +84,15 @@ MODEL:
       args:
         weight: 5.0
         margin_pos: 0.0
-        margin_neg: 0.1
+        margin_neg: 0.3
     recon_self:
-      type: MSELoss
+      type: L1Loss
       args:
         weight: 1.0
     recon_cross:
-      type: MSELoss
+      type: L1Loss
       args:
-        weight: 1.0
+        weight: 2.0
         
   optim:
     type: Adam

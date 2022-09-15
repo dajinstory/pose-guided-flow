@@ -87,7 +87,6 @@ class LitPGFlowV2(LitBaseModel):
         self.sampled_images = []
         
         # log
-        self.epoch = 0
         self.save_hyperparameters(ignore=[])
 
         # pretrained
@@ -154,8 +153,8 @@ class LitPGFlowV2(LitBaseModel):
         losses['loss_fg2'], log_fg2 = self.loss_fg(inter_features[2], vgg_features[2], weight=self.loss_fg_weights[2])
         losses['loss_fg3'], log_fg3 = self.loss_fg(inter_features[3], vgg_features[3], weight=self.loss_fg_weights[3])
         losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
-        losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s)
-        losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c)
+        losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s, weight= 0 if self.global_step < 1000 else None)
+        losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c, weight= 0 if self.global_step < 1000 else None)
         loss_total_common = sum(losses.values())
         
         log_train = {
@@ -235,8 +234,7 @@ class LitPGFlowV2(LitBaseModel):
         self.sampled_images = []
 
         # Update hyper-params if necessary
-        self.epoch += 1
-        if self.epoch % 10 == 0:
+        if self.current_epoch % 10 == 0:
             self.n_bits = min(self.n_bits+1, 8)
             self.n_bins = 2.0**self.n_bits
             self.loss_nll.n_bits = self.n_bits
