@@ -26,7 +26,7 @@ from collections import OrderedDict
 
 import cv2
 
-# NLL, SPLIT
+# NLL, SPLIT, BACKUP before temp=0
 class LitPGFlowV2(LitBaseModel):
     def __init__(self,
                  opt: dict,

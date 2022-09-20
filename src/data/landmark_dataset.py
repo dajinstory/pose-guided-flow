@@ -47,15 +47,29 @@ class LandmarkDataset(BaseDataset):
         ldm = np.array(ldm)
         ldm = torch.Tensor(ldm)
 
-        # Case #1 : 1-channel Heatmap
-        # heatmap = self._draw_edge(ldm)
+        # # Case #1 : 1-channel Heatmap
+        # heatmaps = []
+        # res = self.img_size
+        # for _ in range(7):
+        #     heatmap = self._draw_edge(ldm, img_size=res)
+        #     heatmaps.append(heatmap)
+        #     res = res // 2
        
-        # Case #2 : 68-channel Heatmaps
+        # # Case #2 : 68-channel Heatmaps
+        # heatmaps = []
+        # res = self.img_size
+        # for _ in range(7): 
+        #     heatmap = computeGaussian(ldm, res=res, kernel_sigma=0.1)
+        #     heatmaps.append(heatmap)
+        #     res = res // 2
+
+        # Case #3 : 68-channel + 1-channel
         heatmaps = []
         res = self.img_size
         for _ in range(7): 
             heatmap = computeGaussian(ldm, res=res, kernel_sigma=0.1)
-            heatmaps.append(heatmap)
+            edgemap = self._draw_edge(ldm, img_size=res)
+            heatmaps.append(torch.cat([heatmap, edgemap], dim=0))
             res = res // 2
 
         return heatmaps
@@ -66,17 +80,18 @@ class LandmarkDataset(BaseDataset):
             idx = random.choice(random_range)
         return idx
 
-    def _draw_edge(self, ldmk):
+    def _draw_edge(self, ldmk, img_size=None):
+        img_size = img_size if img_size is not None else self.img_size 
         n_partials = [17, 5, 5, 4, 5, 6, 6, 12, 8] # uface, lbrow, rbrow, hnose, wnose, leye, reye, mouth_out, mouth_in
-        img  = Image.new( mode = "L", size = (self.img_size, self.img_size) )
+        img  = Image.new( mode = "L", size = (img_size, img_size) )
         draw = ImageDraw.Draw(img)
 
         idx=0
         for n_partial in n_partials:
-            x_s, y_s = (ldmk[idx] * self.img_size) // 1
+            x_s, y_s = torch.floor(ldmk[idx] * self.img_size)
             for x_e, y_e in ldmk[idx+1:idx+n_partial]:
-                x_e = (x_e * self.img_size) // 1
-                y_e = (y_e * self.img_size) // 1
+                x_e = torch.floor(x_e * self.img_size)
+                y_e = torch.floor(y_e * self.img_size)
                 draw.line((x_s, y_s, x_e, y_e), fill=255)
                 x_s, y_s = x_e, y_e
             idx += n_partial

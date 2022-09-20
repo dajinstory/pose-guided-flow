@@ -53,7 +53,7 @@ class L1Loss(nn.Module):
         self.reduction = reduction
         self.sample_wise = sample_wise
 
-    def forward(self, pred, target, weight=None, **kwargs):
+    def forward(self, pred, target, margin=0, weight=None, **kwargs):
         """Forward Function.
 
         Args:
@@ -94,7 +94,7 @@ class MSELoss(nn.Module):
         self.reduction = reduction
         self.sample_wise = sample_wise
 
-    def forward(self, pred, target, weight=None, **kwargs):
+    def forward(self, pred, target, margin=0, weight=None, **kwargs):
         """Forward Function.
         Args:
             pred (Tensor): of shape (N, C, H, W). Predicted tensor.

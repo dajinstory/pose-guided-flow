@@ -79,6 +79,7 @@ trainer = Trainer(
     strategy='ddp', # 'ddp' #for python
     accelerator='gpu', 
     devices=args.gpus,
+    gradient_clip_val=0.5,
     logger=logger,
     callbacks=total_callbacks,
     default_root_dir=args.save_path,
