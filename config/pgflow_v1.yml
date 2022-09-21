@@ -1,6 +1,6 @@
 name: pgflow_v1
 
-gpus: [2] #,1,2,3] #[4,5,6,7]
+gpus: [4,5,6,7] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
@@ -100,7 +100,7 @@ MODEL:
     recon_random:
       type: L1Loss
       args:
-        weight: 1 #10.0
+        weight: 0.1 #10.0
         
   optim:
     type: Adam
