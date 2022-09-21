@@ -28,3 +28,8 @@ class TripletLoss(nn.Module):
         loss_cvg = loss_cvg.mean()
         
         return self.weight * loss_cvg, (loss_cvg, d_pos, d_neg)
+
+# class TripletLoss2(nn.Module):
+#     '''
+#     Momentum Network-like Loss
+#     '''

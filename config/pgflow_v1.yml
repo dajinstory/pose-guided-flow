@@ -82,21 +82,25 @@ MODEL:
     cvg:
       type: TripletLoss
       args:
-        weight: 0.5
-        margin_pos: 0.3
-        margin_neg: 1.0
+        weight: 5.0
+        margin_pos: 0.0
+        margin_neg: 0.3
     recon_self:
       type: L1Loss
       args:
-        weight: 1.0 #10.0
+        weight: 5 #1.0 #10.0
     recon_cross:
       type: L1Loss
       args:
-        weight: 2.0 #10.0
+        weight: 10 #2.0 #10.0
     recon_mean:
       type: L1Loss
       args:
-        weight: 1.0 #10.0
+        weight: 10 #10 #10.0
+    recon_random:
+      type: L1Loss
+      args:
+        weight: 1 #10.0
         
   optim:
     type: Adam
