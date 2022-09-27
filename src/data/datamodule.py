@@ -5,6 +5,7 @@ from pytorch_lightning import LightningDataModule
 
 from .base_dataset import BaseDataset
 from .triplet_landmark_dataset import TripletLandmarkDataset
+from .triplet_dataset import TripletDataset
 
 class DataModule(LightningDataModule):
     def __init__(self, opt, is_train=False):
@@ -19,7 +20,8 @@ class DataModule(LightningDataModule):
     def setup(self, stage=None):
         datasets = {
             'BaseDataset' : BaseDataset, 
-            'TripletLandmarkDataset' : TripletLandmarkDataset
+            'TripletLandmarkDataset' : TripletLandmarkDataset,
+            'TripletDataset' : TripletDataset,
         }
 
         try:

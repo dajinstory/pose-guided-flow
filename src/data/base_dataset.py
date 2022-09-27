@@ -34,7 +34,8 @@ class BaseDataset(Dataset):
         im = Image.open(os.path.join(self.root, im))
 
         # Resize image if necessary
-        im = im.resize((self.img_size, self.img_size))
+        if im.size[0] != self.img_size and im.size[1] != self.img_size:
+            im = im.resize((self.img_size, self.img_size))
         im = self.to_tensor(im)
 
         # Grayscale Exception

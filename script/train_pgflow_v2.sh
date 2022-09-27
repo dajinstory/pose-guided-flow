@@ -1,0 +1,1 @@
+python src/train.py --config config/pgflow_v2.yml

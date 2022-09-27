@@ -4,8 +4,11 @@ from time import time
 
 import torch
 import torch.nn as nn
+from torchvision import transforms as T
+ptt = T.PILToTensor()
 
 import numpy as np
+from PIL import Image, ImageDraw
 from math import log, sqrt, pi, exp, cos, sin
 
 
@@ -63,6 +66,24 @@ def computeGaussian(p, res=64, kernel_sigma=0.05, device='cpu'):
         heatmap[i, up:down, left:right] = torch.exp(
             -(mesh.permute(1, 2, 0)[up:down, left:right, :] - center).pow(2).sum(2) / (2 * kernel_sigma ** 2))
     return heatmap
+
+
+def draw_edge(ldmk, img_size=112):
+        n_partials = [17, 5, 5, 4, 5, 6, 6, 12, 8] # uface, lbrow, rbrow, hnose, wnose, leye, reye, mouth_out, mouth_in
+        img  = Image.new( mode = "L", size = (img_size, img_size) )
+        draw = ImageDraw.Draw(img)
+
+        idx=0
+        for n_partial in n_partials:
+            x_s, y_s = torch.floor(ldmk[idx] * img_size)
+            for x_e, y_e in ldmk[idx+1:idx+n_partial]:
+                x_e = torch.floor(x_e * img_size)
+                y_e = torch.floor(y_e * img_size)
+                draw.line((x_s, y_s, x_e, y_e), fill=255)
+                x_s, y_s = x_e, y_e
+            idx += n_partial
+
+        return ptt(img)
 
 
 class CannyFilter(nn.Module):
