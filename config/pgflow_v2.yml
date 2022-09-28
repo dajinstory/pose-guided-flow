@@ -10,7 +10,8 @@ log_every_n_steps: 100
 DATA:
   train:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/train_meta_norm.csv
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/train_frames_norm.csv
@@ -28,7 +29,8 @@ DATA:
   
   valid:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm.csv # valid_meta_norm.csv
@@ -47,7 +49,8 @@ DATA:
   
   test:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm.csv # test_meta_norm.csv
@@ -98,9 +101,9 @@ MODEL:
         weight: 1.0
         n_bits: 2
     feature_guide:
-      type: MSELoss
+      type: L1
       args:
-        weight: 0.1
+        weight: 1
     cvg:
       type: TripletLoss
       args:
@@ -110,11 +113,11 @@ MODEL:
     recon_self:
       type: L1Loss
       args:
-        weight: 0 #0.1 #priors : #1.0 #10.0
+        weight: 1 #0.1 #priors : #1.0 #10.0
     recon_cross:
       type: L1Loss
       args:
-        weight: 0 #0.2 #priors : #2.0 #10.0
+        weight: 1 #0.2 #priors : #2.0 #10.0
     recon_mean:
       type: L1Loss
       args:

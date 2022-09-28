@@ -174,18 +174,20 @@ class LitPGFlowV2(LitBaseModel):
             return im_rec, im
         
         # Reverse
-        # w_s, conditions_s, splits_s, im_s = self._prepare_self(w, conditions, splits, im)
-        # w_c, conditions_c, splits_c, im_c = self._prepare_cross(w, conditions, splits, im)
-        # w_m, conditions_m, splits_m, im_m = self._prepare_mean(w, conditions, splits, im)
-        w_r, conditions_r, splits_r, im_r = self._prepare_random(w, conditions, splits, im)
-        # im_recs, im_s = compute_im_recon(w_s, conditions_s, splits_s, im_s)
-        # im_recc, im_c = compute_im_recon(w_c, conditions_c, splits_c, im_c)
+        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p)
+        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p)
+        # w_m, conditions_m, splits_m, im_m, ldmk_m, f5p_m = self._prepare_mean(w, conditions, splits, im, ldmk, f5p)
+        # w_r, conditions_r, splits_r, im_r, ldmk_r, f5p_r = self._prepare_random(w, conditions, splits, im, ldmk, f5p)
+        im_recs, im_s = compute_im_recon(w_s, conditions_s, splits_s, im_s)
+        im_recc, im_c = compute_im_recon(w_c, conditions_c, splits_c, im_c)
         # im_recm, im_m = compute_im_recon(w_m, conditions_m, splits_m, im_m)
-        im_genr, _ = compute_im_recon(w_r, conditions_r, splits_r, im_r)
+        # im_genr, _ = compute_im_recon(w_r, conditions_r, splits_r, im_r)
         
         # Pose
-        im_genr_resized = T.Resize(112, interpolation=InterpolationMode.BICUBIC, antialias=True)(im_genr)
-        ldmk_genr, f5p_genr = self.ldmk_detector(im_genr_resized) # input: (0,1)
+        # im_genr_resized = T.Resize(112, interpolation=InterpolationMode.BICUBIC, antialias=True)(im_genr)
+        # ldmk_genr, f5p_genr = self.ldmk_detector(im_genr_resized) # input: (0,1)
+        im_recc_resized = T.Resize(112, interpolation=InterpolationMode.BICUBIC, antialias=True)(im_recc)
+        ldmk_recc, f5p_recc = self.ldmk_detector(im_recc_resized) # input: (0,1)
 
         # Loss
         losses = dict()
@@ -195,11 +197,11 @@ class LitPGFlowV2(LitBaseModel):
         losses['loss_fg2'], log_fg2 = self.loss_fg(inter_features[2], kd_features[2])
         losses['loss_fg3'], log_fg3 = self.loss_fg(inter_features[3], kd_features[3])
         losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
-        # losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s, weight= 0 if self.global_step < 0 else None)
-        # losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c, weight= 0 if self.global_step < 0 else None)
+        losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s, weight= 0 if self.global_step < 0 else None)
+        losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c, weight= 0 if self.global_step < 0 else None)
         # losses['loss_recm'], log_recm = self.loss_recm(im_recm, im_m, weight= 0 if self.global_step < 0 else None)
-        losses['loss_ldmk'], log_ldmk = self.loss_ldmk(ldmk[:2*n_batch], ldmk_genr, weight= 0 if self.global_step < 0 else None)
-        losses['loss_f5p'], log_f5p = self.loss_f5p(f5p[:2*n_batch], f5p_genr, weight= 0 if self.global_step < 0 else None)
+        losses['loss_ldmk'], log_ldmk = self.loss_ldmk(ldmk_recc, ldmk_c, weight= 0 if self.global_step < 0 else None)
+        losses['loss_f5p'], log_f5p = self.loss_f5p(f5p_recc, f5p_c, weight= 0 if self.global_step < 0 else None)
         loss_total_common = sum(losses.values())
         
         log_train = {
@@ -211,8 +213,8 @@ class LitPGFlowV2(LitBaseModel):
             'train/loss_cvg': log_cvg[0],
             'train/d_pos': log_cvg[1],
             'train/d_neg': log_cvg[2],
-            # 'train/loss_recs': log_recs,
-            # 'train/loss_recc': log_recc,
+            'train/loss_recs': log_recs,
+            'train/loss_recc': log_recc,
             # 'train/loss_recm': log_recm,
             'train/loss_ldmk': log_ldmk,
             'train/loss_f5p': log_f5p,
@@ -235,8 +237,8 @@ class LitPGFlowV2(LitBaseModel):
         inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers, inter_features[:4]) ]
         
         # Reverse - Latent to Image
-        w_s, conditions_s, splits_s, im_s = self._prepare_self(w, conditions, splits, im)
-        w_c, conditions_c, splits_c, im_c = self._prepare_cross(w, conditions, splits, im)
+        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p)
+        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p)
         im_recs = self.flow_net.reverse(w_s, conditions_s, splits_s)
         im_recc = self.flow_net.reverse(w_c, conditions_c, splits_c)
         
@@ -341,9 +343,10 @@ class LitPGFlowV2(LitBaseModel):
         self.loss_ldmk = losses[opt['landmark']['type']](**opt['landmark']['args'])
         self.loss_f5p = losses[opt['facial5points']['type']](**opt['facial5points']['args'])
 
-    def _prepare_self(self, w, conditions, splits, im, stage='train'):
+    def _prepare_self(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
-        w_ = w.clone().detach()[:2*n_batch] 
+        # w_ = w.clone().detach()[:2*n_batch] 
+        w_ = w[:2*n_batch] 
         # splits_ = [split[:2*n_batch] if split is not None else None for split in splits]  
         # splits_ = [torch.randn_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
@@ -351,22 +354,28 @@ class LitPGFlowV2(LitBaseModel):
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
         im_ = im[:2*n_batch]
-        return w_, conditions_, splits_, im_
+        ldmk_ = ldmk[:2*n_batch]
+        f5p_ = f5p[:2*n_batch]
+        return w_, conditions_, splits_, im_, ldmk_, f5p_
 
-    def _prepare_cross(self, w, conditions, splits, im, stage='train'):
+    def _prepare_cross(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
-        w_ = w.clone().detach()[:2*n_batch]
+        # w_ = w.clone().detach()[:2*n_batch]
+        w_ = w[:2*n_batch] 
         # splits_ = [torch.randn_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:
             conditions_.append(torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0))
         im_ = torch.cat([im[n_batch:2*n_batch], im[:n_batch]], dim=0)
-        return w_, conditions_, splits_, im_
+        ldmk_ = torch.cat([ldmk[n_batch:2*n_batch], ldmk[:n_batch]], dim=0)
+        f5p_ = torch.cat([f5p[n_batch:2*n_batch], f5p[:n_batch]], dim=0)
+        return w_, conditions_, splits_, im_, ldmk_, f5p_
 
-    def _prepare_mean(self, w, conditions, splits, im, stage='train'):
+    def _prepare_mean(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
-        w_ = w.clone().detach()[:2*n_batch] 
+        # w_ = w.clone().detach()[:2*n_batch] 
+        w_ = w[:2*n_batch] 
         w_ = (w_[:n_batch] + w_[n_batch:2*n_batch])/2
         w_ = torch.cat([w_, w_], dim=0)
         splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
@@ -374,15 +383,18 @@ class LitPGFlowV2(LitBaseModel):
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
         im_ = im[:2*n_batch]
-        return w_, conditions_, splits_, im_
+        ldmk_ = ldmk[:2*n_batch]
+        f5p_ = f5p[:2*n_batch]
+        return w_, conditions_, splits_, im_, ldmk_, f5p_
 
-    def _prepare_random(self, w, conditions, splits, im, stage='train'):
+    def _prepare_random(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
-        w_ = w.clone().detach()[:2*n_batch] 
-        w_ = torch.randn_like(w_)
+        w_ = torch.randn_like(w)[:2*n_batch]
         splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
         im_ = im[:2*n_batch]
-        return w_, conditions_, splits_, im_
+        ldmk_ = ldmk[:2*n_batch]
+        f5p_ = f5p[:2*n_batch]
+        return w_, conditions_, splits_, im_, ldmk_, f5p_
