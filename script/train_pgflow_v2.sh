@@ -1,1 +1,1 @@
-python src/train.py --config config/pgflow_v2.yml
+CUDA_VISIBLE_DEVICES=3 python src/train.py --config config/pgflow_v2.yml

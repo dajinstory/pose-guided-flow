@@ -169,8 +169,8 @@ class LitPGFlowV2(LitBaseModel):
             # Quantization
             im_rec = self.preprocess_quant(im_rec)
             # Clamp : (0,1)
-            # im_rec = torch.clamp(im_rec, 0, 1)
-            # im = torch.clamp(im, 0, 1)
+            im_rec = torch.clamp(im_rec, 0, 1)
+            im = torch.clamp(im, 0, 1)
             return im_rec, im
         
         # Reverse
@@ -346,10 +346,9 @@ class LitPGFlowV2(LitBaseModel):
     def _prepare_self(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
         # w_ = w.clone().detach()[:2*n_batch] 
-        w_ = w[:2*n_batch] 
-        # splits_ = [split[:2*n_batch] if split is not None else None for split in splits]  
-        # splits_ = [torch.randn_like(split)[:2*n_batch] if split is not None else None for split in splits]  
-        splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
+        w_ = w[:2*n_batch]
+        splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
@@ -362,8 +361,8 @@ class LitPGFlowV2(LitBaseModel):
         n_batch = w.shape[0]//3
         # w_ = w.clone().detach()[:2*n_batch]
         w_ = w[:2*n_batch] 
-        # splits_ = [torch.randn_like(split)[:2*n_batch] if split is not None else None for split in splits]  
-        splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
+        splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:
             conditions_.append(torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0))
@@ -378,7 +377,8 @@ class LitPGFlowV2(LitBaseModel):
         w_ = w[:2*n_batch] 
         w_ = (w_[:n_batch] + w_[n_batch:2*n_batch])/2
         w_ = torch.cat([w_, w_], dim=0)
-        splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
+        splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])
@@ -390,7 +390,8 @@ class LitPGFlowV2(LitBaseModel):
     def _prepare_random(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
         w_ = torch.randn_like(w)[:2*n_batch]
-        splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
+        splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
         for condition in conditions:                    
             conditions_.append(condition[:2*n_batch])

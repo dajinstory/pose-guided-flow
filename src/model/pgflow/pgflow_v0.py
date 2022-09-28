@@ -30,7 +30,7 @@ def sub_conv(ch_hidden, kernel):
 
 # No SPLIT
 class PGFlowV0(nn.Module):
-    def __init__(self, pretrained=None):
+    def __init__(self, pretrained=None, inter_temp=1.0, final_temp=1.0):
         super().__init__()
 
         # configs
@@ -39,8 +39,8 @@ class PGFlowV0(nn.Module):
         self.n_vectors = 4
         self.level_chunks = 4
         self.vector_chunks = 1
-        self.inter_temp = 1.0
-        self.final_temp = 1.0
+        self.inter_temp = inter_temp
+        self.final_temp = final_temp
 
         # Blocks (3,64,64) -> (768,4,4)
         self.blocks = nn.Sequential(

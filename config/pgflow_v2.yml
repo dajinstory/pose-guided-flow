@@ -1,10 +1,10 @@
 name: pgflow_v2
 
-gpus: [3] #,1,2,3] #[4,5,6,7]
+gpus: [0] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
-val_check_interval: 100 #0.5
+val_check_interval: 1000 #0.5
 log_every_n_steps: 100
 
 DATA:
@@ -32,10 +32,11 @@ DATA:
     # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
     root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm.csv # valid_meta_norm.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_meta_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm.csv
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm_mini.csv
     # abbreviation: false #True
-    abbreviation: true
+    abbreviation: false
     in_size: 64
     gt_size: 64
 
@@ -52,10 +53,11 @@ DATA:
     # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
     root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm.csv # test_meta_norm.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_meta_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm.csv
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm_mini.csv
     # abbreviation: false #true
-    abbreviation: true
+    abbreviation: false
     in_size: 64
     gt_size: 64
 
@@ -66,8 +68,8 @@ DATA:
     batch_size_per_gpu: 4
     num_workers: 1
     pin_memory: true
-    
-    
+
+
 MODEL:
   type: "LitPGFlowV2"
   in_size: 64
@@ -75,13 +77,15 @@ MODEL:
   n_bits: 2
   pretrained: 
     #ckpt_path
-  
+
   flow_net:
     type: PGFlowV2
     args:
-      pretrained: 
-        #ckpt_path
-  
+      inter_temp: 1.0
+      final_temp: 1.0
+      pretrained:
+        # ckpt_path: 
+
   landmark_detector:
     type: FacialLandmarkDetector
     args:
@@ -101,9 +105,9 @@ MODEL:
         weight: 1.0
         n_bits: 2
     feature_guide:
-      type: L1
+      type: L1Loss
       args:
-        weight: 1
+        weight: 1.0
     cvg:
       type: TripletLoss
       args:
@@ -113,11 +117,11 @@ MODEL:
     recon_self:
       type: L1Loss
       args:
-        weight: 1 #0.1 #priors : #1.0 #10.0
+        weight: 1.0 #0.1 #priors : #1.0 #10.0
     recon_cross:
       type: L1Loss
       args:
-        weight: 1 #0.2 #priors : #2.0 #10.0
+        weight: 1.0 #0.2 #priors : #2.0 #10.0
     recon_mean:
       type: L1Loss
       args:
@@ -125,11 +129,11 @@ MODEL:
     landmark:
       type: L1Loss
       args:
-        weight: 10
+        weight: 10.0
     facial5points:
       type: L1Loss
       args:
-        weight: 10
+        weight: 10.0
         
   optim:
     type: Adam
