@@ -60,7 +60,7 @@ class VGG16Module(nn.Module):
         pass
 
 class InsightFaceModule(nn.Module):
-    def __init__(self, pretrained):
+    def __init__(self, pretrained, pretrained_headers=None):
         super(InsightFaceModule, self).__init__()
 
         facenet = Backbone_ID_Loss(input_size=112, num_layers=50, drop_ratio=0.6, mode='ir_se')  
@@ -79,6 +79,8 @@ class InsightFaceModule(nn.Module):
             get_header2(24,128,256,3),
             get_header2(48,256,512,3),            
         )
+        if pretrained_headers is not None:
+            self.headers.load_state_dict(torch.load(pretrained_headers['ckpt_path']))  
         self.require_resize = False
         self.norm_mean = [0.5,0.5,0.5]
         self.norm_std = [0.5,0.5,0.5]

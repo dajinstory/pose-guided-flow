@@ -56,7 +56,7 @@ ckpt_path = args.ckpt_path if args.resume else None
 ## Callback - Checkpoint
 checkpoint_callback_train_nll = ModelCheckpoint(
     dirpath=args.save_path,
-    filename='best-epoch{epoch:02d}-nll{val/metric/l1:.4f}',
+    filename='best-epoch{epoch:02d}-l1_{val/metric/l1:.4f}',
     monitor='val/metric/l1',
     save_last=True,
     save_top_k=3,

@@ -40,6 +40,11 @@ class LitPGFlowV2(LitBaseModel):
 
         super().__init__()
 
+        # opt
+        self.opt = opt
+        if pretrained is True:
+            self.opt['flow_net']['args']['pretrained'] = True
+            
         # network
         flow_nets = {
             'PGFlowV1': PGFlowV1,
@@ -53,12 +58,12 @@ class LitPGFlowV2(LitBaseModel):
             'InsightFaceModule': InsightFaceModule,
         }
 
-        self.opt = opt
-        self.ldmk_detector = ldmk_detectors[opt['landmark_detector']['type']](**opt['landmark_detector']['args'])
         self.flow_net = flow_nets[opt['flow_net']['type']](**opt['flow_net']['args'])
         self.in_size = self.opt['in_size']
         self.n_bits = self.opt['n_bits']
         self.n_bins = 2.0**self.n_bits
+
+        self.ldmk_detector = ldmk_detectors[opt['landmark_detector']['type']](**opt['landmark_detector']['args'])
 
         # self.kd_module = VGG16Module()
         self.kd_module = kd_modules[opt['kd_module']['type']](**opt['kd_module']['args'])
@@ -156,7 +161,8 @@ class LitPGFlowV2(LitBaseModel):
 
         # Forward
         quant_randomness = self.preprocess(torch.rand_like(im)/self.n_bins - 0.5) - self.preprocess(torch.zeros_like(im)) # x = (-0.5~0.5)/n_bins, \ (im-m)/s + (x-m)/s - (0-m)/s = (im+x-m)/s
-        w, log_p, log_det, splits, inter_features = self.flow_net.forward(im + quant_randomness, conditions)
+        # im = im + quant_randomness
+        w, log_p, log_det, splits, inter_features = self.flow_net.forward(im, conditions)
         inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers, inter_features[:4]) ]
 
         # Reverse_function
@@ -167,10 +173,10 @@ class LitPGFlowV2(LitBaseModel):
             im_rec = self.reverse_preprocess(im_rec)
             im = self.reverse_preprocess(im)
             # Quantization
-            im_rec = self.preprocess_quant(im_rec)
+            # im_rec = self.preprocess_quant(im_rec)
             # Clamp : (0,1)
-            im_rec = torch.clamp(im_rec, 0, 1)
-            im = torch.clamp(im, 0, 1)
+            # im_rec = torch.clamp(im_rec, 0, 1)
+            # im = torch.clamp(im, 0, 1)
             return im_rec, im
         
         # Reverse
@@ -229,6 +235,17 @@ class LitPGFlowV2(LitBaseModel):
 
 
     def validation_step(self, batch, batch_idx):
+        # print(self.loss_nll.weight, flush=True)
+        # print(self.loss_cvg.weight, flush=True)
+        # print(self.loss_fg.weight, flush=True)
+        # print(self.loss_recs.weight, flush=True)
+        # print(self.loss_recc.weight, flush=True)
+        # print(self.loss_ldmk.weight, flush=True)
+        # print(self.loss_f5p.weight, flush=True)
+        # if batch_idx == 0:
+        #     torch.save(self.flow_net.state_dict(), 'pgflow.ckpt')
+        #     torch.save(self.kd_module.headers.state_dict(), 'kd_headers.ckpt')
+
         with torch.no_grad():
             im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
 
@@ -349,13 +366,12 @@ class LitPGFlowV2(LitBaseModel):
         w_ = w[:2*n_batch]
         splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
         # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
-        conditions_ = []
-        for condition in conditions:                    
-            conditions_.append(condition[:2*n_batch])
+        conditions_ = [condition[:2*n_batch] for condition in conditions]
         im_ = im[:2*n_batch]
         ldmk_ = ldmk[:2*n_batch]
         f5p_ = f5p[:2*n_batch]
-        return w_, conditions_, splits_, im_, ldmk_, f5p_
+        # return w_, conditions_, splits_, im_, ldmk_, f5p_
+        return w, conditions, splits, im, ldmk, f5p
 
     def _prepare_cross(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//3
@@ -364,8 +380,7 @@ class LitPGFlowV2(LitBaseModel):
         splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
         # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
         conditions_ = []
-        for condition in conditions:
-            conditions_.append(torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0))
+        conditions_ = [torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0) for condition in conditions]
         im_ = torch.cat([im[n_batch:2*n_batch], im[:n_batch]], dim=0)
         ldmk_ = torch.cat([ldmk[n_batch:2*n_batch], ldmk[:n_batch]], dim=0)
         f5p_ = torch.cat([f5p[n_batch:2*n_batch], f5p[:n_batch]], dim=0)
@@ -392,9 +407,7 @@ class LitPGFlowV2(LitBaseModel):
         w_ = torch.randn_like(w)[:2*n_batch]
         splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
         # splits_ = [torch.zeros_like(split)[:2*n_batch] if split is not None else None for split in splits]  
-        conditions_ = []
-        for condition in conditions:                    
-            conditions_.append(condition[:2*n_batch])
+        conditions_ = [condition[:2*n_batch] for condition in conditions]
         im_ = im[:2*n_batch]
         ldmk_ = ldmk[:2*n_batch]
         f5p_ = f5p[:2*n_batch]

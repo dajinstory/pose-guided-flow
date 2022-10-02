@@ -1,10 +1,10 @@
 name: pgflow_v2
 
-gpus: [0] #,1,2,3] #[4,5,6,7]
+gpus: [0,1,2,3] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
-val_check_interval: 1000 #0.5
+val_check_interval: 100 #0.5
 log_every_n_steps: 100
 
 DATA:
@@ -74,9 +74,9 @@ MODEL:
   type: "LitPGFlowV2"
   in_size: 64
   gt_size: 64
-  n_bits: 2
+  n_bits: 3
   pretrained: 
-    #ckpt_path
+    # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/l1_79.9979.ckpt
 
   flow_net:
     type: PGFlowV2
@@ -84,7 +84,7 @@ MODEL:
       inter_temp: 1.0
       final_temp: 1.0
       pretrained:
-        # ckpt_path: 
+        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/pgflow.ckpt
 
   landmark_detector:
     type: FacialLandmarkDetector
@@ -97,31 +97,33 @@ MODEL:
     args:
       pretrained: 
         ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+      pretrained_headers:
+        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/kd_headers.ckpt
 
   loss:
     nll:
       type: NLLLoss
       args:
         weight: 1.0
-        n_bits: 2
-    feature_guide:
-      type: L1Loss
-      args:
-        weight: 1.0
+        n_bits: 3
     cvg:
       type: TripletLoss
       args:
         weight: 5.0
         margin_pos: 0.0
         margin_neg: 0.3
+    feature_guide:
+      type: L1Loss
+      args:
+        weight: 10.0
     recon_self:
       type: L1Loss
       args:
-        weight: 1.0 #0.1 #priors : #1.0 #10.0
+        weight: 5.0 #1 #priors : #1.0 #10.0
     recon_cross:
       type: L1Loss
       args:
-        weight: 1.0 #0.2 #priors : #2.0 #10.0
+        weight: 10.0 #1 #priors : #2.0 #10.0
     recon_mean:
       type: L1Loss
       args:
@@ -129,11 +131,11 @@ MODEL:
     landmark:
       type: L1Loss
       args:
-        weight: 10.0
+        weight: 10.0 # 10.0
     facial5points:
       type: L1Loss
       args:
-        weight: 10.0
+        weight: 10.0 # 10.0
         
   optim:
     type: Adam

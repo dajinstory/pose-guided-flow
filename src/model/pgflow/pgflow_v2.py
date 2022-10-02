@@ -65,21 +65,34 @@ class PGFlowV2(nn.Module):
         )
 
         # checkpoint
-        if pretrained is not None:
-            ckpt_path = pretrained['ckpt_path']
-            print("Load flownet - Checkpoint : ", ckpt_path, flush=True)
-            self.init_weights(ckpt_path)
-        else:
+        if pretrained is None:
+            # print("Load flownet -  No Initialize", flush=True)
             print("Load flownet -  Initial Random N(0,0.01)", flush=True)
             for p in self.parameters():
                 p.data = 0.01 * torch.randn_like(p)
-            # print("Load flownet -  No Initialize", flush=True)
+        elif pretrained is True:
+            print("Load flownet -  Model already loaded from LitPGFlow", flush=True)
+            self.load_initial_settings()
+        else:
+            ckpt_path = pretrained['ckpt_path']
+            print("Load flownet - Checkpoint : ", ckpt_path, flush=True)
+            self.load_weights(ckpt_path)
+            self.load_initial_settings()
  
-    def init_weights(self, ckpt_path):
+    def load_weights(self, ckpt_path):
         self.load_state_dict(torch.load(ckpt_path), strict=True)
+
+    def load_initial_settings(self):
+        # Init actnorm settings
         for block in [*self.blocks, *self.headers]:
             for flow in block.flows:
                 flow.actnorm.inited=True
+        # Init ZeroConv settings
+        # for block in [*self.blocks, *self.headers]:
+        #     for flow in block.flows:
+        #         for subnet in flow.coupling.nets:
+        #             zeroconv = subnet[-1]
+        #             zeroconv.inited=True
         
     def forward(self, x, conditions):
         output = x        
