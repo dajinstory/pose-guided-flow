@@ -28,40 +28,43 @@ def sub_conv(ch_hidden, kernel):
                                     nn.ReLU(),
                                     nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
 
-# SPLIT of Blocks. GLOW
-class PGFlowV1(nn.Module):
+# SPLIT of Blocks, Feature Conditions
+class PGFlowV3(nn.Module):
     def __init__(self, pretrained=None, inter_temp=1.0, final_temp=1.0):
         super().__init__()
 
         # configs
         self.img_size = 64
-        self.w_size = 4 # 1
+        self.w_size = 1
         self.inter_temp = inter_temp
         self.final_temp = final_temp
 
         # Blocks (3,64,64) -> (96,4,4) -> (48,4,4)
         self.blocks = nn.Sequential(
+            Block(squeeze=False, # (3,64,64)
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=3, ch_c=32, n_chunk=3, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  split=False),
             Block(squeeze=True, # (12,32,32)
-                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=12, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=12, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (24,16,16)
-                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=24, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=24, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (48,8,8)
-                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=48, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=48, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (96,4,4)
-                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=96, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=96, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
         )
         # Headers (48,4,4) -> (768,1,1)
         self.headers = nn.Sequential(
-            # Block(squeeze=True, # (192,2,2)
-            #       flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=192, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
-            #       split=False),
-            # Block(squeeze=True, # (768,1,1)
-            #       flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=768, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
-            #       split=False),
+            Block(squeeze=True, # (192,2,2)
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=192, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
+                  split=False),
+             Block(squeeze=True, # (768,1,1)
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=768, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
+                  split=False),
         )
 
         # checkpoint
@@ -87,7 +90,7 @@ class PGFlowV1(nn.Module):
         for block in [*self.blocks, *self.headers]:
             for flow in block.flows:
                 flow.actnorm.inited=True
-        # Init ZeroConv settings
+        # # Init ZeroConv settings
         # for block in [*self.blocks, *self.headers]:
         #     for flow in block.flows:
         #         for subnet in flow.coupling.nets:

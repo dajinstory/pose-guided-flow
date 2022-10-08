@@ -141,6 +141,7 @@ class LitPGFlowV2(LitBaseModel):
 
         # KD Guidance
         kd_features = []
+        self.kd_module.blocks.eval()
         with torch.no_grad():
             feature = self.kd_module.preprocess(im) # input: norm( (0,1) )
             for block in self.kd_module.blocks:
@@ -205,7 +206,8 @@ class LitPGFlowV2(LitBaseModel):
         losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
         losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s, weight= 0 if self.global_step < 0 else None)
         losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c, weight= 0 if self.global_step < 0 else None)
-        # losses['loss_recm'], log_recm = self.loss_recm(im_recm, im_m, weight= 0 if self.global_step < 0 else None)
+        (losses['loss_perc'], losses['loss_stlc']), (log_perc, log_stlc) = self.loss_perc(im_recc, im_c)
+        losses['loss_idc'], log_idc = self.loss_idc(im_recc, im_c)        
         losses['loss_ldmk'], log_ldmk = self.loss_ldmk(ldmk_recc, ldmk_c, weight= 0 if self.global_step < 0 else None)
         losses['loss_f5p'], log_f5p = self.loss_f5p(f5p_recc, f5p_c, weight= 0 if self.global_step < 0 else None)
         loss_total_common = sum(losses.values())
@@ -221,7 +223,9 @@ class LitPGFlowV2(LitBaseModel):
             'train/d_neg': log_cvg[2],
             'train/loss_recs': log_recs,
             'train/loss_recc': log_recc,
-            # 'train/loss_recm': log_recm,
+            'train/loss_perc': log_perc,
+            'train/loss_stlc': log_stlc,
+            'train/loss_idc': log_idc,
             'train/loss_ldmk': log_ldmk,
             'train/loss_f5p': log_f5p,
             'train/loss_total_common': loss_total_common,
@@ -352,11 +356,11 @@ class LitPGFlowV2(LitBaseModel):
         
         self.loss_nll = losses[opt['nll']['type']](**opt['nll']['args'])
         self.loss_fg = losses[opt['feature_guide']['type']](**opt['feature_guide']['args'])
-        # self.loss_fg_weights = [10, 0.5, 0.1] #[0.5, 0.2, 0.1, 0.2] #[0, 0, 0, 0] #[1.0, 0.5, 0.25, 0.125] #[0.01, 0.05, 0.1, 0.08]
         self.loss_cvg = losses[opt['cvg']['type']](**opt['cvg']['args'])
         self.loss_recs = losses[opt['recon_self']['type']](**opt['recon_self']['args'])
         self.loss_recc = losses[opt['recon_cross']['type']](**opt['recon_cross']['args'])
-        self.loss_recm = losses[opt['recon_mean']['type']](**opt['recon_mean']['args'])
+        self.loss_perc = losses[opt['perc_cross']['type']](**opt['perc_cross']['args'])
+        self.loss_idc = losses[opt['id_cross']['type']](**opt['id_cross']['args'])
         self.loss_ldmk = losses[opt['landmark']['type']](**opt['landmark']['args'])
         self.loss_f5p = losses[opt['facial5points']['type']](**opt['facial5points']['args'])
 

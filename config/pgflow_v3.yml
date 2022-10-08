@@ -1,4 +1,4 @@
-name: pgflow_v2
+name: pgflow_v3
 
 gpus: [0,1,2,3] #,1,2,3] #[4,5,6,7]
 seed: 310
@@ -23,8 +23,8 @@ DATA:
     use_rot: false
     use_shuffle: true
     
-    batch_size_per_gpu: 8
-    num_workers: 4
+    batch_size_per_gpu: 2
+    num_workers: 1
     pin_memory: true
   
   valid:
@@ -44,8 +44,8 @@ DATA:
     use_rot: false
     use_shuffle: false
     
-    batch_size_per_gpu: 16
-    num_workers: 4
+    batch_size_per_gpu: 4
+    num_workers: 1
     pin_memory: true
   
   test:
@@ -65,26 +65,26 @@ DATA:
     use_rot: false
     use_shuffle: false
     
-    batch_size_per_gpu: 4
-    num_workers: 1
+    batch_size_per_gpu: 16
+    num_workers: 4
     pin_memory: true
 
 
 MODEL:
-  type: "LitPGFlowV2"
+  type: "LitPGFlowV3"
   in_size: 64
   gt_size: 64
-  n_bits: 5
+  n_bits: 3
   pretrained: 
-    # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_19.0899/l1_19.0899.ckpt
+    # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_19.0899/l1_19.0899.ckpt
 
   flow_net:
-    type: PGFlowV2
+    type: PGFlowV3
     args:
       inter_temp: 1.0
       final_temp: 1.0
       pretrained:
-        ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_19.0899/pgflow.ckpt
+        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_79.9979/pgflow.ckpt
 
   landmark_detector:
     type: FacialLandmarkDetector
@@ -98,14 +98,14 @@ MODEL:
       pretrained: 
         ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
       pretrained_headers:
-        ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_19.0899/kd_headers.ckpt
+        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/kd_headers.ckpt
 
   loss:
     nll:
       type: NLLLoss
       args:
         weight: 1.0
-        n_bits: 5
+        n_bits: 3
     cvg:
       type: TripletLoss
       args:
@@ -119,30 +119,30 @@ MODEL:
     recon_self:
       type: L1Loss
       args:
-        weight: 5.0 #1 #priors : #1.0 #10.0
+        weight: 1.0 
     recon_cross:
       type: L1Loss
       args:
-        weight: 10.0 #1 #priors : #2.0 #10.0
+        weight: 1.0 
     perc_cross:
       type: PerceptualLoss
       args:
         weight_p: 1.0
-        weight_s: 0 #10.0
+        weight_s: 0.0
     id_cross:
       type: IDLoss
       args:
-        weight: 1.0 #10.0
+        weight: 1.0
         pretrained:
           ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
     landmark:
       type: L1Loss
       args:
-        weight: 10.0 # 10.0
+        weight: 10.0 
     facial5points:
       type: L1Loss
       args:
-        weight: 10.0 # 10.0
+        weight: 10.0
         
   optim:
     type: Adam

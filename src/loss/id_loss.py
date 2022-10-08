@@ -7,11 +7,11 @@ from .facial_recognition.model_irse import Backbone as Backbone_ID_Loss
 
 
 class IDLoss(nn.Module):
-    def __init__(self, weight, checkpoint_path, use_input_norm=True):
+    def __init__(self, weight, pretrained, use_input_norm=True):
         super(IDLoss, self).__init__()
         print('Loading ResNet ArcFace')
         self.facenet = Backbone_ID_Loss(input_size=112, num_layers=50, drop_ratio=0.6, mode='ir_se')
-        self.facenet.load_state_dict(torch.load(checkpoint_path))
+        self.facenet.load_state_dict(torch.load(pretrained['ckpt_path']))
         self.pool = torch.nn.AdaptiveAvgPool2d((256, 256))
         self.face_pool = torch.nn.AdaptiveAvgPool2d((112, 112))
         self.facenet.eval()
