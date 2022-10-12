@@ -17,7 +17,7 @@ tt = T.ToTensor()
 tti = ToPILImage()
 itt = PILToTensor()
 
-class TripletDataset(Dataset):
+class QuadrupletDataset(Dataset):
     def __init__(self, opt):
         self.root_path = opt['root_path']
         self.ldmk_root_path = opt['ldmk_root_path']
@@ -41,16 +41,21 @@ class TripletDataset(Dataset):
         # p_idx = self._verify_data(p_idx, [*range(l, idx), *range(idx+1, r)])
         n_idx = random.choice([*range(0,l), *range(r, len(self.frames))])
         # n_idx = self._verify_data(n_idx, [*range(0,l), *range(r, len(self.frames))])
+        l_n = self.frames[n_idx]['range_start']
+        r_n = self.frames[n_idx]['range_end']
+        n_idx2 = random.choice([*range(l_n, n_idx), *range(n_idx+1, r_n)])
         
         # Prepare Dataset
         im0 = self.load_image(idx)
         im1 = self.load_image(p_idx)
         im2 = self.load_image(n_idx)
+        im3 = self.load_image(n_idx2)
         c0, ldmk0, f5p0 = self.load_landmark(idx)
         c1, ldmk1, f5p1 = self.load_landmark(p_idx)
         c2, ldmk2, f5p2 = self.load_landmark(n_idx)
+        c3, ldmk3, f5p3 = self.load_landmark(n_idx2)
 
-        return (im0, im1, im2), (c0, c1, c2), (ldmk0, ldmk1, ldmk2), (f5p0, f5p1, f5p2)
+        return (im0, im1, im2, im3), (c0, c1, c2, c3), (ldmk0, ldmk1, ldmk2, ldmk3), (f5p0, f5p1, f5p2, f5p3)
     
     def load_image(self, idx):
        # Load images

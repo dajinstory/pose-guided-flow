@@ -1,6 +1,6 @@
-name: pgflow_v3
+name: pgflow_v4
 
-gpus: [0,1,2,3] #[4,5,6,7]
+gpus: [0,1,2,3] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
@@ -9,7 +9,7 @@ log_every_n_steps: 100
 
 DATA:
   train:
-    type: TripletDataset
+    type: QuadrupletDataset
     root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/train_frames_norm.csv
@@ -26,7 +26,7 @@ DATA:
     pin_memory: true
   
   valid:
-    type: TripletDataset
+    type: QuadrupletDataset
     root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
@@ -44,7 +44,7 @@ DATA:
     pin_memory: true
   
   test:
-    type: TripletDataset
+    type: QuadrupletDataset
     root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
     meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
@@ -63,7 +63,7 @@ DATA:
 
 
 MODEL:
-  type: "LitPGFlowV3"
+  type: "LitPGFlowV4"
   in_size: 64
   gt_size: 64
   n_bits: 8
@@ -71,7 +71,7 @@ MODEL:
     # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_19.0899/l1_19.0899.ckpt
 
   flow_net:
-    type: PGFlowV3
+    type: PGFlowV4
     args:
       inter_temp: 1.0
       final_temp: 1.0
@@ -99,7 +99,7 @@ MODEL:
         weight: 1.0
         n_bits: 8
     cvg:
-      type: TripletLoss
+      type: QuadrupletLoss
       args:
         weight: 5.0
         margin_pos: 0.0

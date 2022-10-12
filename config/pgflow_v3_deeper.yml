@@ -1,6 +1,6 @@
-name: pgflow_v3
+name: pgflow_v3_deep
 
-gpus: [0,1,2,3] #[4,5,6,7]
+gpus: [0] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
@@ -10,9 +10,11 @@ log_every_n_steps: 100
 DATA:
   train:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/train_frames_norm.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/train_meta_norm.csv
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/train_frames_norm.csv
     abbreviation: false
     in_size: 64
     gt_size: 64
@@ -21,15 +23,18 @@ DATA:
     use_rot: false
     use_shuffle: true
     
-    batch_size_per_gpu: 16
+    batch_size_per_gpu: 4
     num_workers: 4
     pin_memory: true
   
   valid:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_meta_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm.csv
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_frames_norm_mini.csv
     # abbreviation: false #True
     abbreviation: false
     in_size: 64
@@ -39,15 +44,18 @@ DATA:
     use_rot: false
     use_shuffle: false
     
-    batch_size_per_gpu: 16
+    batch_size_per_gpu: 4
     num_workers: 4
     pin_memory: true
   
   test:
     type: TripletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    # root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64
     ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_meta_norm_mini.csv
+    # meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm.csv
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_frames_norm_mini.csv
     # abbreviation: false #true
     abbreviation: false
     in_size: 64
@@ -71,7 +79,7 @@ MODEL:
     # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_19.0899/l1_19.0899.ckpt
 
   flow_net:
-    type: PGFlowV3
+    type: PGFlowV4
     args:
       inter_temp: 1.0
       final_temp: 1.0

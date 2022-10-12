@@ -27,7 +27,7 @@ from collections import OrderedDict
 
 import cv2
 
-# NLL, SPLIT, temp=0, for GLOW-like model
+# NLL, Triplet, Recm, Recr
 class LitPGFlowV1(LitBaseModel):
     def __init__(self,
                  opt: dict,

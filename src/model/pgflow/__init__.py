@@ -2,6 +2,7 @@ from .lit_pgflow_v0 import LitPGFlowV0
 from .lit_pgflow_v1 import LitPGFlowV1
 from .lit_pgflow_v2 import LitPGFlowV2
 from .lit_pgflow_v3 import LitPGFlowV3
+from .lit_pgflow_v4 import LitPGFlowV4
 
 
 __all__ = [
@@ -9,4 +10,5 @@ __all__ = [
     'LitPGFlowV1',
     'LitPGFlowV2',
     'LitPGFlowV3',
+    'LitPGFlowV4',
 ]

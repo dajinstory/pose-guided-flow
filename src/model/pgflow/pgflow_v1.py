@@ -28,7 +28,7 @@ def sub_conv(ch_hidden, kernel):
                                     nn.ReLU(),
                                     nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
 
-# SPLIT of Blocks. GLOW
+# GLOW - multi-level splits
 class PGFlowV1(nn.Module):
     def __init__(self, pretrained=None, inter_temp=1.0, final_temp=1.0):
         super().__init__()

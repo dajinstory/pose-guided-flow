@@ -1,7 +1,7 @@
 import torch
 from importlib import import_module
 
-from .pgflow import LitPGFlowV0, LitPGFlowV1, LitPGFlowV2, LitPGFlowV3
+from .pgflow import LitPGFlowV0, LitPGFlowV1, LitPGFlowV2, LitPGFlowV3, LitPGFlowV4
 
 
 def build_model(opt, is_train=True):
@@ -11,6 +11,7 @@ def build_model(opt, is_train=True):
         'LitPGFlowV1': LitPGFlowV1,
         'LitPGFlowV2': LitPGFlowV2,
         'LitPGFlowV3': LitPGFlowV3,
+        'LitPGFlowV4': LitPGFlowV4,
     }
 
     try: 
