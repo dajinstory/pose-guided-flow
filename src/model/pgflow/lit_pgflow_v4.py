@@ -229,9 +229,9 @@ class LitPGFlowV4(LitBaseModel):
         # print(self.loss_recc.weight, flush=True)
         # print(self.loss_ldmk.weight, flush=True)
         # print(self.loss_f5p.weight, flush=True)
-        # if batch_idx == 0:
-        #     torch.save(self.flow_net.state_dict(), 'pgflow.ckpt')
-        #     torch.save(self.kd_module.headers.state_dict(), 'kd_headers.ckpt')
+        if batch_idx == 0:
+            torch.save(self.flow_net.state_dict(), 'flow.ckpt')
+            torch.save(self.global_header.state_dict(), 'global_header.ckpt')
 
         with torch.no_grad():
             im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
