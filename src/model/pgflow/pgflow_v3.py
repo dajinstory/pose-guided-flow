@@ -42,7 +42,7 @@ class PGFlowV3(nn.Module):
         # Blocks (3,64,64) -> (96,4,4) -> (48,4,4)
         self.blocks = nn.Sequential(
             Block(squeeze=False, # (3,64,64)
-                  flow_type='InvConvFlow', n_flows=24, coupling_type= 'Affine', ch_in=3, ch_c=32, n_chunk=3, subnet=sub_conv(16,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=3, ch_c=32, n_chunk=3, subnet=sub_conv(16,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
             Block(squeeze=True, # (12,32,32)
                   flow_type='InvConvFlow', n_flows=24, coupling_type= 'SingleAffine', ch_in=12, ch_c=69, n_chunk=2, subnet=sub_conv(32,3), clamp=1.0, clamp_activation='GLOW',
