@@ -13,8 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 from ..common.lit_basemodel import LitBaseModel
 from ..landmark_detector.landmark_detector import FacialLandmarkDetector
-from .pgflow_v3 import PGFlowV3
-from .pgflow_v4 import PGFlowV4
+from .pgflow_256x256_v4 import PGFlow256x256V4
 from .module import VGG16Module, InsightFaceModule, get_header, get_header2
 from util import computeGaussian, draw_edge
 from util import floor, round
@@ -32,7 +31,7 @@ ptt = T.ToTensor()
 ttp = T.ToPILImage()
 
 # Quadric Dataloader
-class LitPGFlowV4(LitBaseModel):
+class LitPGFlow256x256V4(LitBaseModel):
     def __init__(self,
                  opt: dict,
                  pretrained=None,
@@ -47,8 +46,7 @@ class LitPGFlowV4(LitBaseModel):
             
         # network
         flow_nets = {
-            'PGFlowV3': PGFlowV3,
-            'PGFlowV4': PGFlowV4,
+            'PGFlow256x256V4': PGFlow256x256V4,
         }
         ldmk_detectors = {
             'FacialLandmarkDetector': FacialLandmarkDetector,

@@ -1,3 +1,7 @@
+'''
+file from https://github.com/open-mmlab/mmgeneration/blob/master/mmgen/models/architectures/arcface/model_irse.py
+'''
+
 from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d, PReLU, Dropout, Sequential, Module
 from .helpers import get_blocks, Flatten, bottleneck_IR, bottleneck_IR_SE, l2_norm
 

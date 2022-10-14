@@ -1,18 +1,20 @@
-name: pgflow_v4_256x256
+name: pgflow_256x256_v4
 
-gpus: [0] #,1,2,3] #[4,5,6,7]
+gpus: [0,1,2] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
 val_check_interval: 500 #0.5
 log_every_n_steps: 100
 
+experiment_root_path: /home/dajinhan/experiments
+
 DATA:
   train:
     type: QuadrupletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
-    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/train_frames_norm.csv
+    root_path: /home/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /home/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /home/dajin`han/datasets/VoxCeleb/meta/png/train_frames_norm.csv
     abbreviation: false
     in_size: 256
     gt_size: 256
@@ -27,9 +29,9 @@ DATA:
   
   valid:
     type: QuadrupletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
-    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
+    root_path: /home/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /home/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /home/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
     # abbreviation: false #True
     abbreviation: false
     in_size: 256
@@ -45,9 +47,9 @@ DATA:
   
   test:
     type: QuadrupletDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
-    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
+    root_path: /home/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /home/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /home/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
     # abbreviation: false #true
     abbreviation: false
     in_size: 256
@@ -63,34 +65,37 @@ DATA:
 
 
 MODEL:
-  type: "LitPGFlowV4"
+  type: "LitPGFlow256x256V4"
   in_size: 256
   gt_size: 256
   n_bits: 8
   pretrained: 
-    # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_19.0899/l1_19.0899.ckpt
+    # ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/experiments/pgflow_v3/l1_19.0899/l1_19.0899.ckpt
 
   flow_net:
-    type: PGFlowV4
+    type: PGFlow256x256V4
     args:
       inter_temp: 1.0
       final_temp: 1.0
       pretrained:
-        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v3/l1_79.9979/pgflow.ckpt
+        # ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/experiments/pgflow_v3/l1_79.9979/pgflow.ckpt
 
   landmark_detector:
     type: FacialLandmarkDetector
     args:
       pretrained:
-        ckpt_path: /home/dajinhan/nas_dajinhan/models/landmark_detector/checkpoint/mobilefacenet_model_best.pth.tar
+        ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/models/landmark_detector/checkpoint/mobilefacenet_model_best.pth.tar
 
   kd_module:
-    type: InsightFaceModule
+    type: VGG16Module
     args:
-      pretrained: 
-        ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
-      pretrained_headers:
-        # ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/kd_headers.ckpt
+  # kd_module:
+  #   type: InsightFaceModule
+  #   args:
+  #     pretrained: 
+  #       ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+  #     pretrained_headers:
+  #       # ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/experiments/pgflow_v2/l1_79.9979/kd_headers.ckpt
 
   loss:
     nll:
@@ -126,7 +131,7 @@ MODEL:
       args:
         weight: 1.0
         pretrained:
-          ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+          ckpt_path: /home/dajinhan/mnt/124/nas_dajinhan/models/ArcFace/model_ir_se50.pth
     landmark:
       type: L1Loss
       args:

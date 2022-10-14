@@ -21,7 +21,6 @@ args_config, remaining = config_parser.parse_known_args()
 parser = argparse.ArgumentParser(description='Config file to arguments')
 parser.add_argument('--seed', type=int, default=310)
 parser.add_argument('--resume', action='store_true', default=False)
-parser.add_argument('--ckpt_path', type=str, default='')
 
 ## Parse arguments
 with open(args_config.config, 'r') as f:
@@ -31,9 +30,8 @@ args = parser.parse_args(remaining)
 
 
 # Log, Checkpoint
-experiment_path = '/data/dajinhan/experiment' # './experiment'
-args.save_path = os.path.join(experiment_path, args.name, 'checkpoint')
-args.log_path = os.path.join(experiment_path, args.name, 'log')
+args.save_path = os.path.join(args.experiment_root_path, args.name, 'checkpoint')
+args.log_path = os.path.join(args.experiment_root_path, args.name, 'log')
 os.makedirs(args.save_path, exist_ok=True)
 os.makedirs(args.log_path, exist_ok=True)
 logger = TensorBoardLogger(args.log_path, name='flow')
@@ -49,7 +47,7 @@ datamodule = build_datamodule(args.DATA, is_train=True)
 
 # Model
 model = build_model(args.MODEL, is_train=True)
-ckpt_path = args.ckpt_path if args.resume else None
+ckpt_path = args.MODEL['pretrained']['ckpt_path'] if args.resume else None
 
 
 # Callbacks
