@@ -32,7 +32,7 @@ ptt = T.ToTensor()
 ttp = T.ToPILImage()
 
 # Quadric Dataloader
-class LitPGFlowV4(LitBaseModel):
+class LitPGFlowV4Finetune(LitBaseModel):
     def __init__(self,
                  opt: dict,
                  pretrained=None,
@@ -66,8 +66,10 @@ class LitPGFlowV4(LitBaseModel):
         self.ldmk_detector = ldmk_detectors[opt['landmark_detector']['type']](**opt['landmark_detector']['args'])
 
         self.kd_module = kd_modules[opt['kd_module']['type']](**opt['kd_module']['args'])
-        self.global_header = get_header(512, 512, 32, kernel=1) # original version
-    
+        # self.global_header = get_header(512, 512, 32, kernel=1) # original version
+        # self.global_header.load_state_dict(torch.load('/home/dajinhan/nas_dajinhan/experiments/pgflow_v4/result/global_header.ckpt'), strict=True)
+        self.global_header = get_header2(512, 512, 32, kernel=1) # finetune version
+
         self.norm_mean = [0.5, 0.5, 0.5]
         self.norm_std = [1.0, 1.0, 1.0] #[0.5, 0.5, 0.5]
                 
@@ -128,8 +130,8 @@ class LitPGFlowV4(LitBaseModel):
         kd_features = []
         self.kd_module.blocks.eval()
         with torch.no_grad():
-            # feature = self.kd_module.preprocess(im_resized) # VGG16 : input: norm( (0,1) )
-            feature = self.kd_module.preprocess(im) # InsightFace : input: norm( (0,1) )
+            feature = self.kd_module.preprocess(im_resized) # VGG16 : input: norm( (0,1) )
+            # feature = self.kd_module.preprocess(im) # InsightFace : input: norm( (0,1) )
             for block in self.kd_module.blocks:
                 feature = block(feature)
                 kd_features.append(feature)

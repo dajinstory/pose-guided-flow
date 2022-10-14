@@ -63,7 +63,6 @@ class LitPGFlow256x256V4(LitBaseModel):
 
         self.ldmk_detector = ldmk_detectors[opt['landmark_detector']['type']](**opt['landmark_detector']['args'])
 
-        # self.kd_module = VGG16Module()
         self.kd_module = kd_modules[opt['kd_module']['type']](**opt['kd_module']['args'])
         self.global_header = get_header(512, 512, 32, kernel=1)
         # self.global_header = get_header2(512, 512, 32, kernel=1)
@@ -117,14 +116,19 @@ class LitPGFlow256x256V4(LitBaseModel):
         ldmk = torch.cat(ldmk, dim=0)
         f5p = torch.cat(f5p, dim=0)
 
+        # Im_resized for VGG Header
+        im_resized = T.Resize(self.in_size//2, interpolation=InterpolationMode.BICUBIC, antialias=True)(im)
+
         # Data Quantization, (0,1)
         im = self.preprocess_quant(im)
+        im_resized = self.preprocess_quant(im_resized)        
 
         # KD Guidance
         kd_features = []
         self.kd_module.blocks.eval()
         with torch.no_grad():
-            feature = self.kd_module.preprocess(im) # input: norm( (0,1) )
+            feature = self.kd_module.preprocess(im_resized) # VGG16 : input: norm( (0,1) )
+            # feature = self.kd_module.preprocess(im) # InsightFace : input: norm( (0,1) )
             for block in self.kd_module.blocks:
                 feature = block(feature)
                 kd_features.append(feature)

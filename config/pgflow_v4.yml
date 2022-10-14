@@ -1,6 +1,6 @@
 name: pgflow_v4
 
-gpus: [0,1,2,3] #,1,2,3] #[4,5,6,7]
+gpus: [0] #,1,2,3] #,1,2,3] #[4,5,6,7]
 seed: 310
 
 n_epochs: 100
@@ -86,6 +86,10 @@ MODEL:
       pretrained:
         ckpt_path: /home/dajinhan/nas_dajinhan/models/landmark_detector/checkpoint/mobilefacenet_model_best.pth.tar
 
+  # kd_module:
+  #   type: VGG16Module
+  #   args:
+  #     pretrained:
   kd_module:
     type: InsightFaceModule
     args:

@@ -89,6 +89,7 @@ MODEL:
   kd_module:
     type: VGG16Module
     args:
+      pretrained:
   # kd_module:
   #   type: InsightFaceModule
   #   args:
@@ -112,7 +113,7 @@ MODEL:
     feature_guide:
       type: L1Loss
       args:
-        weight: 10.0
+        weight: 1.0
     recon_self:
       type: L1Loss
       args:

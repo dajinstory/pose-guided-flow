@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torchvision
-from torchvision import transforms
+import torchvision.transforms as T
+from torchvision.transforms import InterpolationMode
 
 from ..facial_recognition.model_irse import Backbone as Backbone_ID_Loss
 
@@ -35,9 +36,9 @@ def get_header2(ch_in, ch_hidden, ch_out, kernel=3):
 class VGG16Module(nn.Module):
     def __init__(self, pretrained=None):
         super(VGG16Module, self).__init__()
-            
+        
         # INPUT : (,3,32,32), resized to /2
-        self.blocks = nn.Sequential(                                                 
+        self.blocks = nn.Sequential(
             torchvision.models.vgg16(pretrained=True).features[:4].eval(),      # 64,H,W 
             torchvision.models.vgg16(pretrained=True).features[4:9].eval(),     # 128,/2,/2
             torchvision.models.vgg16(pretrained=True).features[9:16].eval(),    # 256,/4,/4
@@ -52,7 +53,7 @@ class VGG16Module(nn.Module):
         self.require_resize = True
         self.norm_mean = [0.485, 0.456, 0.406]
         self.norm_std = [0.229, 0.224, 0.225]
-        self.preprocess = transforms.Normalize(
+        self.preprocess = T.Normalize(
             mean=self.norm_mean, 
             std=self.norm_std)
     
@@ -84,7 +85,7 @@ class InsightFaceModule(nn.Module):
         self.require_resize = False
         self.norm_mean = [0.5,0.5,0.5]
         self.norm_std = [0.5,0.5,0.5]
-        self.preprocess = transforms.Normalize(
+        self.preprocess = T.Normalize(
             mean=self.norm_mean, 
             std=self.norm_std)
             
