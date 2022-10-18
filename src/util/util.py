@@ -5,7 +5,7 @@ from time import time
 import torch
 import torch.nn as nn
 from torchvision import transforms as T
-ptt = T.PILToTensor()
+tt = T.ToTensor()
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -83,7 +83,7 @@ def draw_edge(ldmk, img_size=112):
                 x_s, y_s = x_e, y_e
             idx += n_partial
 
-        return ptt(img)
+        return tt(img)
 
 
 class CannyFilter(nn.Module):

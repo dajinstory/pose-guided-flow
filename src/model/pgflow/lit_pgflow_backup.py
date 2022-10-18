@@ -15,6 +15,7 @@ from ..common.lit_basemodel import LitBaseModel
 from ..landmark_detector.landmark_detector import FacialLandmarkDetector
 from .pgflow_v3 import PGFlowV3
 from .pgflow_v4 import PGFlowV4
+from .pgflow_v4_nogf import PGFlowV4NOGF
 from .module import VGG16Module, InsightFaceModule, get_header, get_header2
 from util import computeGaussian, draw_edge
 from util import floor, round
@@ -49,6 +50,7 @@ class LitPGFlowV4(LitBaseModel):
         flow_nets = {
             'PGFlowV3': PGFlowV3,
             'PGFlowV4': PGFlowV4,
+            'PGFlowV4NOGF': PGFlowV4NOGF,
         }
         ldmk_detectors = {
             'FacialLandmarkDetector': FacialLandmarkDetector,
@@ -245,8 +247,8 @@ class LitPGFlowV4(LitBaseModel):
         inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers, inter_features[1:5]) ]
         
         # Reverse - Latent to Image
-        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p)
-        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p)
+        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p, stage='valid')
+        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p, stage='valid')
         im_recs = self.flow_net.reverse(w_s, conditions_s, splits_s)
         im_recc = self.flow_net.reverse(w_c, conditions_c, splits_c)
         
@@ -355,7 +357,8 @@ class LitPGFlowV4(LitBaseModel):
     def _prepare_self(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//4
         w_ = w
-        splits_ = [0.7 * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        temp = 0.7 if stage == 'train' else 0
+        splits_ = [temp * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
         conditions_ = conditions
         im_ = im
         ldmk_ = ldmk
@@ -365,7 +368,8 @@ class LitPGFlowV4(LitBaseModel):
     def _prepare_cross(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
         n_batch = w.shape[0]//4
         w_ = w
-        splits_ = [0.7 * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        temp = 0.7 if stage == 'train' else 0
+        splits_ = [temp * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
         conditions_ = [ torch.cat([ 
             condition[n_batch:2*n_batch], 
             condition[:n_batch],

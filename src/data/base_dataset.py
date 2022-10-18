@@ -10,8 +10,8 @@ from torchvision import transforms as T
 from torchvision.transforms import ToPILImage, PILToTensor
 
 tt = T.ToTensor()
-tti = ToPILImage()
-itt = PILToTensor()
+# ttp = ToPILImage()
+# ptt = PILToTensor()
 
 class BaseDataset(Dataset):
     def __init__(self, opt):

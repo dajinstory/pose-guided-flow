@@ -1,1 +1,0 @@
-CUDA_VISIBLE_DEVICES=4,5,6,7 python src/train.py --config config/pgflow_v2_finetune.yml

@@ -4,9 +4,8 @@ from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
 
 from .base_dataset import BaseDataset
-# from .triplet_landmark_dataset import TripletLandmarkDataset
-from .triplet_dataset import TripletDataset
-from .quadruplet_dataset import QuadrupletDataset
+from .triplet_landmark_dataset import TripletLandmarkDataset
+from .quadruplet_landmark_dataset import QuadrupletLandmarkDataset
 
 class DataModule(LightningDataModule):
     def __init__(self, opt, is_train=False):
@@ -21,9 +20,8 @@ class DataModule(LightningDataModule):
     def setup(self, stage=None):
         datasets = {
             'BaseDataset' : BaseDataset, 
-            # 'TripletLandmarkDataset' : TripletLandmarkDataset,
-            'TripletDataset' : TripletDataset,
-            'QuadrupletDataset' : QuadrupletDataset,
+            'TripletLandmarkDataset' : TripletLandmarkDataset,
+            'QuadrupletLandmarkDataset' : QuadrupletLandmarkDataset,
         }
 
         try:

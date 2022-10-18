@@ -6,27 +6,27 @@ from math import log, sqrt, pi, exp, cos, sin
 from ..common.flow_module import gaussian_log_p
 from ..common.flow_module import Block, FakeBlock, ZeroConv2d
 
-# def sub_conv(ch_hidden, kernel):
-#     pad = kernel // 2
-#     kernel_center = 1
-#     pad_center = kernel_center // 2 
-#     return lambda ch_in, ch_out: nn.Sequential(
-#                                     nn.Conv2d(ch_in, ch_hidden, kernel, padding=pad),
-#                                     nn.ReLU(),
-#                                     nn.Conv2d(ch_hidden, ch_hidden, kernel_center, padding=pad_center),
-#                                     nn.ReLU(),
-#                                     ZeroConv2d(ch_hidden, ch_out),)
-
 def sub_conv(ch_hidden, kernel):
     pad = kernel // 2
     kernel_center = 1
-    pad_center = kernel_center // 2
+    pad_center = kernel_center // 2 
     return lambda ch_in, ch_out: nn.Sequential(
                                     nn.Conv2d(ch_in, ch_hidden, kernel, padding=pad),
                                     nn.ReLU(),
                                     nn.Conv2d(ch_hidden, ch_hidden, kernel_center, padding=pad_center),
                                     nn.ReLU(),
-                                    nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
+                                    ZeroConv2d(ch_hidden, ch_out),)
+
+# def sub_conv(ch_hidden, kernel):
+#     pad = kernel // 2
+#     kernel_center = 1
+#     pad_center = kernel_center // 2
+#     return lambda ch_in, ch_out: nn.Sequential(
+#                                     nn.Conv2d(ch_in, ch_hidden, kernel, padding=pad),
+#                                     nn.ReLU(),
+#                                     nn.Conv2d(ch_hidden, ch_hidden, kernel_center, padding=pad_center),
+#                                     nn.ReLU(),
+#                                     nn.Conv2d(ch_hidden, ch_out, kernel, padding=pad),)
 
 # GLOW + headers
 class PGFlowV2(nn.Module):
@@ -42,25 +42,25 @@ class PGFlowV2(nn.Module):
         # Blocks (3,64,64) -> (96,4,4) -> (48,4,4)
         self.blocks = nn.Sequential(
             Block(squeeze=True, # (12,32,32)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=12, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=12, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (24,16,16)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=24, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=24, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (48,8,8)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=48, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=48, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
             Block(squeeze=True, # (96,4,4)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=96, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=48, coupling_type= 'SingleAffine', ch_in=96, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=True),
         )
         # Headers (48,4,4) -> (768,1,1)
         self.headers = nn.Sequential(
             Block(squeeze=True, # (192,2,2)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=192, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=192, ch_c=69, n_chunk=2, subnet=sub_conv(512,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
              Block(squeeze=True, # (768,1,1)
-                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'Affine', ch_in=768, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
+                  flow_type='InvConvFlow', n_flows=16, coupling_type= 'SingleAffine', ch_in=768, ch_c=69, n_chunk=2, subnet=sub_conv(1024,3), clamp=1.0, clamp_activation='GLOW',
                   split=False),
         )
 
@@ -88,11 +88,11 @@ class PGFlowV2(nn.Module):
             for flow in block.flows:
                 flow.actnorm.inited=True
         # Init ZeroConv settings
-        # for block in [*self.blocks, *self.headers]:
-        #     for flow in block.flows:
-        #         for subnet in flow.coupling.nets:
-        #             zeroconv = subnet[-1]
-        #             zeroconv.inited=True
+        for block in [*self.blocks, *self.headers]:
+            for flow in block.flows:
+                for subnet in flow.coupling.nets:
+                    zeroconv = subnet[-1]
+                    zeroconv.inited=True
         
     def forward(self, x, conditions):
         output = x        

@@ -1,19 +1,20 @@
 name: pgflow_v0
 
-gpus: [2] #,1,2,3] #[4,5,6,7]
+gpus: [0]
 seed: 310
 
 n_epochs: 100
-val_check_interval: 1000 #0.5
-log_every_n_steps: 1000 # MAX:609 for 64 batch
+val_check_interval: 500
+log_every_n_steps: 100
 
 experiment_root_path: /data/dajinhan/experiment
 
 DATA:
   train:
-    type: TripletLandmarkDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/train_meta_norm.csv
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/train_frames_norm.csv
     abbreviation: false
     in_size: 64
     gt_size: 64
@@ -27,10 +28,12 @@ DATA:
     pin_memory: true
   
   valid:
-    type: TripletLandmarkDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/valid_meta_norm_mini.csv # valid_meta_norm.csv
-    abbreviation: false #True
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
+    # abbreviation: false #True
+    abbreviation: false
     in_size: 64
     gt_size: 64
 
@@ -38,15 +41,17 @@ DATA:
     use_rot: false
     use_shuffle: false
     
-    batch_size_per_gpu: 4
-    num_workers: 1
+    batch_size_per_gpu: 16
+    num_workers: 4
     pin_memory: true
   
   test:
-    type: TripletLandmarkDataset
-    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces
-    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/test_meta_norm_mini.csv # test_meta_norm.csv
-    abbreviation: false #true
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/64x64_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
+    # abbreviation: false #true
+    abbreviation: false
     in_size: 64
     gt_size: 64
 
@@ -54,47 +59,88 @@ DATA:
     use_rot: false
     use_shuffle: false
     
-    batch_size_per_gpu: 4
-    num_workers: 1
+    batch_size_per_gpu: 16
+    num_workers: 4
     pin_memory: true
-    
-    
+
+
 MODEL:
-  type: "LitPGFlowV0"
+  type: LitPGFlowV0
   in_size: 64
   gt_size: 64
-  n_bits: 8 # 5
-  pretrained: #/home/dajinhan/nas_dajinhan/models/
-  
+  n_bits: 8
+  pretrained: 
+    # ckpt_path: 
+
   flow_net:
     type: PGFlowV0
     args:
+      inter_temp: 1.0
+      final_temp: 1.0
       pretrained:
-  
+        # ckpt_path: 
+
+  landmark_detector:
+    type: FacialLandmarkDetector
+    args:
+      pretrained:
+        ckpt_path: /home/dajinhan/nas_dajinhan/models/landmark_detector/checkpoint/mobilefacenet_model_best.pth.tar
+
+  # kd_module:
+  #   type: VGG16Module
+  #   args:
+  #     pretrained:
+  kd_module:
+    type: InsightFaceModule
+    args:
+      pretrained: 
+        ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+      pretrained_headers:
+        # ckpt_path: 
+
   loss:
     nll:
       type: NLLLoss
       args:
         weight: 1.0
-        n_bits: 8 # 5
-    feature_guide:
-      type: MSELoss
-      args:
-        weight: 0.1
+        n_bits: 8
     cvg:
-      type: TripletLoss
+      type: QuadrupletLoss
       args:
         weight: 5.0
         margin_pos: 0.0
         margin_neg: 0.3
+    feature_guide:
+      type: L1Loss
+      args:
+        weight: 10.0
     recon_self:
       type: L1Loss
       args:
-        weight: 1.0
+        weight: 1.0 
     recon_cross:
       type: L1Loss
       args:
-        weight: 2.0
+        weight: 1.0 
+    perc_cross:
+      type: PerceptualLoss
+      args:
+        weight_p: 1.0
+        weight_s: 0.0
+    id_cross:
+      type: IDLoss
+      args:
+        weight: 1.0
+        pretrained:
+          ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+    landmark:
+      type: L1Loss
+      args:
+        weight: 10.0 
+    facial5points:
+      type: L1Loss
+      args:
+        weight: 10.0
         
   optim:
     type: Adam

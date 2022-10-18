@@ -7,14 +7,13 @@ from PIL import Image, ImageDraw
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms as T
-from torchvision.transforms import ToPILImage, PILToTensor
 
-from util import computeGaussian
+# from util import computeGaussian, draw_edge
 from .base_dataset import BaseDataset
 
 tt = T.ToTensor()
-tti = ToPILImage()
-itt = PILToTensor()
+# ttp = T.ToPILImage()
+# ptt = T.PILToTensor()
 
 class LandmarkDataset(BaseDataset):
     def __init__(self, opt):
@@ -37,49 +36,78 @@ class LandmarkDataset(BaseDataset):
             
         return im, ldmk
 
+    def load_image(self, idx):
+       # Load images
+        im = self.frames[idx]['name']
+        im = Image.open(os.path.join(self.root_path, im))
+
+        # Resize image if necessary
+        if im.size[0] != self.img_size and im.size[1] != self.img_size:
+            im = im.resize((self.img_size, self.img_size))
+        im = self.to_tensor(im)
+
+        # Grayscale Exception
+        if im.shape[0] != 3:
+            im = torch.stack([im[0,:,:]]*3, dim=0)
+
+        return im
+
     def load_landmark(self, idx):
         # Load landmarks
-        ldm = []
-        for li in range(68):
-            ldm_x = self.frames[idx]['landmark_%d_x'%(li)]
-            ldm_y = self.frames[idx]['landmark_%d_y'%(li)]
-            ldm.append([ldm_x, ldm_y])    
-        ldm = np.array(ldm)
-        ldm = torch.Tensor(ldm)
+        ldmk_path = self.frames[idx]['name'].replace('.png', 'ldmk.npy')
+        f5p_path = self.frames[idx]['name'].replace('.png', 'f5p.npy')
+        ldmk = np.load(os.path.join(self.ldmk_root_path, ldmk_path))
+        f5p = np.load(os.path.join(self.ldmk_root_path, f5p_path))
 
-        # # Case #1 : 1-channel Heatmap
-        # heatmaps = []
-        # res = self.img_size
-        # for _ in range(7):
-        #     heatmap = self._draw_edge(ldm, img_size=res)
-        #     heatmaps.append(heatmap)
-        #     res = res // 2
-       
-        # # Case #2 : 68-channel Heatmaps
-        # heatmaps = []
-        # res = self.img_size
-        # for _ in range(7): 
-        #     heatmap = computeGaussian(ldm, res=res, kernel_sigma=0.1)
-        #     heatmaps.append(heatmap)
-        #     res = res // 2
+        ldmk = torch.Tensor(ldmk)
+        f5p = torch.Tensor(f5p)
 
         # Case #3 : 68-channel + 1-channel
-        heatmaps = []
+        conditions = []
         res = self.img_size
         for _ in range(7): 
-            heatmap = computeGaussian(ldm, res=res, kernel_sigma=0.1)
-            edgemap = self._draw_edge(ldm, img_size=res)
-            heatmaps.append(torch.cat([heatmap, edgemap], dim=0))
+            heatmap = self._computeGaussian(p=ldmk, res=res, kernel_sigma=0.1)
+            edgemap = self._draw_edge(ldmk, img_size=res)
+            conditions.append(torch.cat([heatmap, edgemap], dim=0))
             res = res // 2
 
-        return heatmaps
-        
-    def _verify_data(self, idx, random_range):
-        # Avoid landmark-missed data
-        while math.isnan(self.frames[idx]['landmark_0_x']):
-            idx = random.choice(random_range)
-        return idx
+        return conditions, ldmk, f5p
 
+    def _computeGaussian(self, p, res=64, kernel_sigma=0.05, device='cpu'):
+        '''
+        REFERENCE : 못찾음...
+        p should be torch.Tensor(), with shape (N_points, 2)
+        each point should (0.,0.) ~ (1., 1.)
+        '''
+        ksize = round(res * kernel_sigma * 6)
+        sigma = kernel_sigma * res
+        x = np.linspace(0, 1, int(res))
+        y = np.linspace(0, 1, int(res))
+        xv, yv = np.meshgrid(x, y)
+        txv = torch.from_numpy(xv).unsqueeze(0).float()
+        tyv = torch.from_numpy(yv).unsqueeze(0).float()
+        mesh = torch.cat((txv, tyv), 0).to(device)          # positions
+        heatmap = torch.zeros((len(p), res, res)).to(device)    # create an empty gaussian density image
+
+        for i in range(len(p)):
+            center = p[i, 0:2]  # go through each point
+            hw = round(3 * kernel_sigma * res)  # only consider band-limited gaussian with 3sigma
+            coord_center = torch.floor(center * res)
+
+            up = torch.max(coord_center[1] - hw, torch.Tensor([0]).to(device))  # take the boundary into account
+            down = torch.min(coord_center[1] + hw + 1, torch.Tensor([res]).to(device))
+            left = torch.max(coord_center[0] - hw, torch.Tensor([0]).to(device))
+            right = torch.min(coord_center[0] + hw + 1, torch.Tensor([res]).to(device))
+            up = up.long()
+            down = down.long()
+            left = left.long()
+            right = right.long()
+
+            # apply gaussian kernel on the pixels based on their distance to the center
+            heatmap[i, up:down, left:right] = torch.exp(
+                -(mesh.permute(1, 2, 0)[up:down, left:right, :] - center).pow(2).sum(2) / (2 * kernel_sigma ** 2))
+        return heatmap
+        
     def _draw_edge(self, ldmk, img_size=None):
         img_size = img_size if img_size is not None else self.img_size 
         n_partials = [17, 5, 5, 4, 5, 6, 6, 12, 8] # uface, lbrow, rbrow, hnose, wnose, leye, reye, mouth_out, mouth_in
@@ -98,3 +126,8 @@ class LandmarkDataset(BaseDataset):
         
         return tt(img)
     
+    def _verify_data(self, idx, random_range):
+        # Avoid landmark-missed data
+        while math.isnan(self.frames[idx]['landmark_0_x']):
+            idx = random.choice(random_range)
+        return idx

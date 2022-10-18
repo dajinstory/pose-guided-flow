@@ -14,11 +14,9 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 from ..common.lit_basemodel import LitBaseModel
 from ..landmark_detector.landmark_detector import FacialLandmarkDetector
 from .pgflow_v3 import PGFlowV3
-from .pgflow_v4 import PGFlowV4
-from .module import VGG16Module, InsightFaceModule, get_header, get_header2
-from util import computeGaussian, draw_edge
+from .module import VGG16Module, InsightFaceModule, GlobalHeader
 from util import floor, round
-from loss import NLLLoss, TripletLoss, MSELoss, L1Loss, PerceptualLoss, IDLoss, GANLoss
+from loss import NLLLoss, TripletLoss, QuadrupletLoss, MSELoss, L1Loss, PerceptualLoss, IDLoss, GANLoss
 from metric import L1, PSNR, SSIM
 
 import os
@@ -28,10 +26,6 @@ from PIL import Image
 from collections import OrderedDict
 import cv2
 
-ptt = T.ToTensor()
-ttp = T.ToPILImage()
-
-# Global Polling Feature as Condition
 class LitPGFlowV3(LitBaseModel):
     def __init__(self,
                  opt: dict,
@@ -48,7 +42,6 @@ class LitPGFlowV3(LitBaseModel):
         # network
         flow_nets = {
             'PGFlowV3': PGFlowV3,
-            'PGFlowV4': PGFlowV4,
         }
         ldmk_detectors = {
             'FacialLandmarkDetector': FacialLandmarkDetector,
@@ -65,13 +58,11 @@ class LitPGFlowV3(LitBaseModel):
 
         self.ldmk_detector = ldmk_detectors[opt['landmark_detector']['type']](**opt['landmark_detector']['args'])
 
-        # self.kd_module = VGG16Module()
         self.kd_module = kd_modules[opt['kd_module']['type']](**opt['kd_module']['args'])
-        self.global_header = get_header(512, 512, 32, kernel=1)
-        # self.global_header = get_header2(512, 512, 32, kernel=1)
+        # self.global_header = GlobalHeader(in_size=self.in_size)
 
         self.norm_mean = [0.5, 0.5, 0.5]
-        self.norm_std = [1.0, 1.0, 1.0] #[0.5, 0.5, 0.5]
+        self.norm_std = [1.0, 1.0, 1.0]
                 
         self.preprocess = T.Normalize(
             mean=self.norm_mean, 
@@ -119,24 +110,32 @@ class LitPGFlowV3(LitBaseModel):
         ldmk = torch.cat(ldmk, dim=0)
         f5p = torch.cat(f5p, dim=0)
 
+        # Im_resized for VGG Header
+        im_resized = T.Resize(self.in_size//2, interpolation=InterpolationMode.BICUBIC, antialias=True)(im)
+
         # Data Quantization, (0,1)
         im = self.preprocess_quant(im)
+        im_resized = self.preprocess_quant(im_resized)        
 
         # KD Guidance
         kd_features = []
         self.kd_module.blocks.eval()
         with torch.no_grad():
-            feature = self.kd_module.preprocess(im) # input: norm( (0,1) )
+            if type(self.kd_module) is VGG16Module:
+                feature = self.kd_module.preprocess(im_resized) # VGG16 : input: norm( (0,1) )
+            elif type(self.kd_module) is InsightFaceModule:
+                feature = self.kd_module.preprocess(im) # InsightFace : input: norm( (0,1) )
+            else:
+                raise ValueError(f'KD-Module [{type(self.kd_module)}] is not supported (Preprocessing)')
+
             for block in self.kd_module.blocks:
                 feature = block(feature)
                 kd_features.append(feature)
 
         # Global Feature
-        global_feature = kd_features[-1].mean(dim=[2,3], keepdim=True)
-        global_feature = self.global_header(global_feature)
-        global_feature = torch.cat([global_feature]*self.opt['in_size'], dim=2)
-        global_feature = torch.cat([global_feature]*self.opt['in_size'], dim=3)
-
+        # global_feature = self.global_header(kd_features[-1], out_size=self.in_size)
+        global_feature = None
+        
         # Preprocess Inputs
         im = self.preprocess(im)
         conditions = [global_feature] + conditions[1:7]
@@ -145,15 +144,14 @@ class LitPGFlowV3(LitBaseModel):
         return im, conditions, kd_features, ldmk, f5p
 
     def training_step(self, batch, batch_idx):
-        with torch.no_grad():
-            im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
-            n_batch = im.shape[0]//3
+        im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
+        n_batch = im.shape[0]//4
 
         # Forward
         quant_randomness = self.preprocess(torch.rand_like(im)/self.n_bins - 0.5) - self.preprocess(torch.zeros_like(im)) # x = (-0.5~0.5)/n_bins, \ (im-m)/s + (x-m)/s - (0-m)/s = (im+x-m)/s
         # im = im + quant_randomness
         w, log_p, log_det, splits, inter_features = self.flow_net.forward(im, conditions)
-        inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers, inter_features[1:5]) ]
+        inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers[0:4], inter_features[1:5]) ]
 
         # Reverse_function
         def compute_im_recon(w, conditions, splits, im):
@@ -186,7 +184,7 @@ class LitPGFlowV3(LitBaseModel):
         losses['loss_fg1'], log_fg1 = self.loss_fg(inter_features[1], kd_features[1])
         losses['loss_fg2'], log_fg2 = self.loss_fg(inter_features[2], kd_features[2])
         losses['loss_fg3'], log_fg3 = self.loss_fg(inter_features[3], kd_features[3])
-        losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=3, dim=0))
+        losses['loss_cvg'], log_cvg = self.loss_cvg(*torch.chunk(w, chunks=4, dim=0))
         losses['loss_recs'], log_recs = self.loss_recs(im_recs, im_s, weight= 0 if self.global_step < 0 else None)
         losses['loss_recc'], log_recc = self.loss_recc(im_recc, im_c, weight= 0 if self.global_step < 0 else None)
         (losses['loss_perc'], losses['loss_stlc']), (log_perc, log_stlc) = self.loss_perc(im_recc, im_c)
@@ -222,26 +220,20 @@ class LitPGFlowV3(LitBaseModel):
 
 
     def validation_step(self, batch, batch_idx):
-        # print(self.loss_nll.weight, flush=True)
-        # print(self.loss_cvg.weight, flush=True)
-        # print(self.loss_fg.weight, flush=True)
-        # print(self.loss_recs.weight, flush=True)
-        # print(self.loss_recc.weight, flush=True)
-        # print(self.loss_ldmk.weight, flush=True)
-        # print(self.loss_f5p.weight, flush=True)
         # if batch_idx == 0:
-        #     torch.save(self.flow_net.state_dict(), 'pgflow.ckpt')
-        #     torch.save(self.kd_module.headers.state_dict(), 'kd_headers.ckpt')
+        #     torch.save(self.flow_net.state_dict(), 'flow.ckpt')
+        #     torch.save(self.global_header.state_dict(), 'global_header.ckpt')
+        #     torch.save(self.kd_module.headers.state_dict(), 'kd_module_headers.ckpt')
 
-        with torch.no_grad():
-            im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
+        im, conditions, kd_features, ldmk, f5p = self.preprocess_batch(batch)
 
         # Forward
         w, log_p, log_det, splits, inter_features = self.flow_net.forward(im, conditions)
+        inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers[0:4], inter_features[1:5]) ]
         
         # Reverse - Latent to Image
-        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p)
-        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p)
+        w_s, conditions_s, splits_s, im_s, ldmk_s, f5p_s = self._prepare_self(w, conditions, splits, im, ldmk, f5p, stage='valid')
+        w_c, conditions_c, splits_c, im_c, ldmk_c, f5p_c = self._prepare_cross(w, conditions, splits, im, ldmk, f5p, stage='valid')
         im_recs = self.flow_net.reverse(w_s, conditions_s, splits_s)
         im_recc = self.flow_net.reverse(w_c, conditions_c, splits_c)
         
@@ -309,7 +301,11 @@ class LitPGFlowV3(LitBaseModel):
         pass
 
     def configure_optimizers(self):
-        trainable_parameters = [*self.flow_net.parameters(), *self.kd_module.headers.parameters(), *self.global_header.parameters()]
+        trainable_parameters = [
+            *self.flow_net.parameters(), 
+            *self.kd_module.headers.parameters(), 
+            # *self.global_header.parameters(),
+        ]
 
         optimizer = Adam(
             trainable_parameters, 
@@ -329,6 +325,7 @@ class LitPGFlowV3(LitBaseModel):
         losses = {
             'NLLLoss': NLLLoss,
             'TripletLoss': TripletLoss,
+            'QuadrupletLoss': QuadrupletLoss,
             'MSELoss': MSELoss,
             'L1Loss': L1Loss,
             'PerceptualLoss': PerceptualLoss,
@@ -347,25 +344,44 @@ class LitPGFlowV3(LitBaseModel):
         self.loss_f5p = losses[opt['facial5points']['type']](**opt['facial5points']['args'])
 
     def _prepare_self(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
-        # n_batch = w.shape[0]//3
-        # w_ = w[:2*n_batch]
-        # splits_ = [0.7 * torch.randn_like(split)[:2*n_batch] * self.flow_net.inter_temp if split is not None else None for split in splits]  
-        # conditions_ = [condition[:2*n_batch] for condition in conditions]
-        # im_ = im[:2*n_batch]
-        # ldmk_ = ldmk[:2*n_batch]
-        # f5p_ = f5p[:2*n_batch]
-        # return w_, conditions_, splits_, im_, ldmk_, f5p_
-
-        splits_ = [0.7 * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
-        return w, conditions, splits_, im, ldmk, f5p
+        n_batch = w.shape[0]//4
+        w_ = w
+        temp = 0.7 if stage == 'train' else 0
+        splits_ = [temp * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        conditions_ = conditions
+        im_ = im
+        ldmk_ = ldmk
+        f5p_ = f5p
+        return w_, conditions_, splits_, im_, ldmk_, f5p_
 
     def _prepare_cross(self, w, conditions, splits, im, ldmk, f5p, stage='train'):
-        n_batch = w.shape[0]//3
-        w_ = w[:2*n_batch] 
-        splits_ = [0.7 * torch.randn_like(split[:2*n_batch]) * self.flow_net.inter_temp if split is not None else None for split in splits]  
-        conditions_ = [torch.cat([condition[n_batch:2*n_batch], condition[:n_batch]], dim=0) for condition in conditions]
-        conditions_[0] = conditions[0][:2*n_batch]
-        im_ = torch.cat([im[n_batch:2*n_batch], im[:n_batch]], dim=0)
-        ldmk_ = torch.cat([ldmk[n_batch:2*n_batch], ldmk[:n_batch]], dim=0)
-        f5p_ = torch.cat([f5p[n_batch:2*n_batch], f5p[:n_batch]], dim=0)
+        n_batch = w.shape[0]//4
+        w_ = w
+        temp = 0.7 if stage == 'train' else 0
+        splits_ = [temp * torch.randn_like(split) * self.flow_net.inter_temp if split is not None else None for split in splits]  
+        conditions_ = [ torch.cat([ 
+            condition[n_batch:2*n_batch], 
+            condition[:n_batch],
+            condition[3*n_batch:],
+            condition[2*n_batch:3*n_batch]
+            ], dim=0) if condition is not None else None for condition in conditions ]
+        conditions_[0] = conditions[0]
+        im_ = torch.cat([
+            im[n_batch:2*n_batch], 
+            im[:n_batch],
+            im[3*n_batch:], 
+            im[2*n_batch:3*n_batch],
+            ], dim=0)
+        ldmk_ = torch.cat([
+            ldmk[n_batch:2*n_batch], 
+            ldmk[:n_batch],
+            ldmk[3*n_batch:], 
+            ldmk[2*n_batch:3*n_batch]
+            ], dim=0)
+        f5p_ = torch.cat([
+            f5p[n_batch:2*n_batch], 
+            f5p[:n_batch],
+            f5p[3*n_batch:], 
+            f5p[2*n_batch:3*n_batch]
+            ], dim=0)
         return w_, conditions_, splits_, im_, ldmk_, f5p_
