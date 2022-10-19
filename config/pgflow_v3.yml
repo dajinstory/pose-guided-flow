@@ -1,6 +1,6 @@
 name: pgflow_v3
 
-gpus: [0]
+gpus: [0,1,2,3]
 seed: 310
 
 n_epochs: 100
@@ -23,8 +23,8 @@ DATA:
     use_rot: false
     use_shuffle: true
     
-    batch_size_per_gpu: 4
-    num_workers: 1
+    batch_size_per_gpu: 16
+    num_workers: 4
     pin_memory: true
   
   valid:
