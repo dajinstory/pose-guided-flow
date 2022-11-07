@@ -14,7 +14,7 @@ from model import build_model
 # Parser
 ## Config Parser
 config_parser = argparse.ArgumentParser(description='Config file path')
-config_parser.add_argument('-c', '--config', default='config/pgflow_64x64_celeba.yml', metavar='FILE')
+config_parser.add_argument('-c', '--config', default='config/pgflow_v3.yml', metavar='FILE')
 args_config, remaining = config_parser.parse_known_args()
 
 ## Additional Argument Parser
@@ -47,7 +47,6 @@ datamodule = build_datamodule(args.DATA, is_train=False)
 # Model
 model = build_model(args.MODEL, is_train=False)
 ckpt_path = args.MODEL['pretrained']['ckpt_path']# if args.resume else None
-
 
 # Test
 ## Lightning Trainer
