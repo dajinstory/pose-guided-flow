@@ -278,6 +278,8 @@ class LitPGFlowV0(LitBaseModel):
         self.log_dict(log_valid)
 
     def test_step(self, batch, batch_idx):
+        # if batch_idx == 0:
+        #     torch.save(self.flow_net.state_dict(), 'pgflow.ckpt')
         self.validation_step(batch, batch_idx)
 
     def validation_epoch_end(self, outputs):
