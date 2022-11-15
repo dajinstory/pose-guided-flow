@@ -1,0 +1,155 @@
+name: pgflow_256x256
+
+gpus: [0]
+seed: 310
+
+n_epochs: 100
+val_check_interval: 500
+log_every_n_steps: 100
+
+experiment_root_path: /data/dajinhan/experiment
+
+DATA:
+  train:
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/train_frames_norm.csv
+    abbreviation: false
+    in_size: 256
+    gt_size: 256
+
+    use_hflip: true
+    use_rot: false
+    use_shuffle: true
+    
+    batch_size_per_gpu: 1
+    num_workers: 1
+    pin_memory: true
+  
+  valid:
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/valid_frames_norm_mini.csv
+    # abbreviation: false #True
+    abbreviation: false
+    in_size: 256
+    gt_size: 256
+
+    use_hflip: false
+    use_rot: false
+    use_shuffle: false
+    
+    batch_size_per_gpu: 4
+    num_workers: 1
+    pin_memory: true
+  
+  test:
+    type: QuadrupletLandmarkDataset
+    root_path: /data/dajinhan/datasets/VoxCeleb/unzippedFaces_resized/256x256_png
+    ldmk_root_path: /data/dajinhan/datasets/VoxCeleb/landmarks
+    meta_path: /data/dajinhan/datasets/VoxCeleb/meta/png/test_frames_norm_mini.csv
+    # abbreviation: false #true
+    abbreviation: false
+    in_size: 256
+    gt_size: 256
+
+    use_hflip: false
+    use_rot: false
+    use_shuffle: false
+    
+    batch_size_per_gpu: 4
+    num_workers: 1
+    pin_memory: true
+
+
+MODEL:
+  type: LitPGFlow256x256
+  in_size: 256
+  gt_size: 256
+  n_bits: 8
+  pretrained: 
+    ckpt_path: /home/dajinhan/nas_dajinhan/experiments/pgflow/raw/pgflow_256x256/checkpoint/best-epoch01-l1_14.4098.ckpt
+
+  flow_net:
+    type: PGFlow256x256
+    args:
+      inter_temp: 1.0
+      final_temp: 1.0
+      pretrained:
+        # ckpt_path: 
+
+  landmark_detector:
+    type: FacialLandmarkDetector
+    args:
+      pretrained:
+        ckpt_path: /home/dajinhan/nas_dajinhan/models/landmark_detector/checkpoint/mobilefacenet_model_best.pth.tar
+
+  # kd_module:
+  #   type: VGG16Module
+  #   args:
+  #     pretrained:
+  kd_module:
+    type: InsightFaceModule
+    args:
+      pretrained: 
+        ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+      pretrained_headers:
+        # ckpt_path: 
+
+  loss:
+    nll:
+      type: NLLLoss
+      args:
+        weight: 1.0
+        n_bits: 8
+    cvg:
+      type: QuadrupletLoss
+      args:
+        weight: 5.0
+        margin_pos: 0.0
+        margin_neg: 0.3
+    feature_guide:
+      type: L1Loss
+      args:
+        weight: 10.0
+    recon_self:
+      type: L1Loss
+      args:
+        weight: 1.0 
+    recon_cross:
+      type: L1Loss
+      args:
+        weight: 1.0 
+    perc_cross:
+      type: PerceptualLoss
+      args:
+        weight_p: 1.0
+        weight_s: 0.0
+    id_cross:
+      type: IDLoss
+      args:
+        weight: 1.0
+        pretrained:
+          ckpt_path: /home/dajinhan/nas_dajinhan/models/ArcFace/model_ir_se50.pth
+    landmark:
+      type: L1Loss
+      args:
+        weight: 10.0 
+    facial5points:
+      type: L1Loss
+      args:
+        weight: 10.0
+        
+  optim:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingLR
+    T_max: 30
+    eta_min: !!float 1e-7
+  
