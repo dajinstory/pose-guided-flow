@@ -149,7 +149,7 @@ class LitPGFlow256x256(LitBaseModel):
 
         # Forward
         quant_randomness = self.preprocess(torch.rand_like(im)/self.n_bins - 0.5) - self.preprocess(torch.zeros_like(im)) # x = (-0.5~0.5)/n_bins, \ (im-m)/s + (x-m)/s - (0-m)/s = (im+x-m)/s
-        # im = im + quant_randomness
+        im = im + quant_randomness
         w, log_p, log_det, splits, inter_features = self.flow_net.forward(im, conditions)
         inter_features = [ kd_header(inter_feature) for kd_header, inter_feature in zip(self.kd_module.headers[0:4], inter_features[1:5]) ]
 
@@ -161,10 +161,11 @@ class LitPGFlow256x256(LitBaseModel):
             im_rec = self.reverse_preprocess(im_rec)
             im = self.reverse_preprocess(im)
             # Quantization
-            # im_rec = self.preprocess_quant(im_rec)
+            im_rec = self.preprocess_quant(im_rec)
+            im = self.preprocess_quant(im)
             # Clamp : (0,1)
-            # im_rec = torch.clamp(im_rec, 0, 1)
-            # im = torch.clamp(im, 0, 1)
+            im_rec = torch.clamp(im_rec, 0, 1)
+            im = torch.clamp(im, 0, 1)
             return im_rec, im
         
         # Reverse

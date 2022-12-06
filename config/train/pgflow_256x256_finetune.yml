@@ -68,7 +68,7 @@ MODEL:
   type: LitPGFlow256x256
   in_size: 256
   gt_size: 256
-  n_bits: 8
+  n_bits: 5
   pretrained: 
     # ckpt_path: 
 
@@ -103,7 +103,7 @@ MODEL:
       type: NLLLoss
       args:
         weight: 1.0
-        n_bits: 8
+        n_bits: 5
     cvg:
       type: QuadrupletLoss
       args:
